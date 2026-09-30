@@ -1,0 +1,12 @@
+build/
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.bin
+*.dll
+*.exe
+*.dylib
+*.ini
+private-auth-session/
+.DS_Store

@@ -1,0 +1,27 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+LoadLibraryA
+GetProcAddress
+GetStdHandle
+WriteFile
+GetLastError
+ExitProcess
+CreateFileA
+CloseHandle
+
+AcquireSRWLockExclusive
+ReleaseSRWLockExclusive
+
+GetEnvironmentVariableA
+
+GetModuleFileNameA
+
+ReadFile
+
+GetFileAttributesA
+
+DeleteFileA
+
+GetCurrentProcessId
+
+GetTickCount64

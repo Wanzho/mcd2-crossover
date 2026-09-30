@@ -1,0 +1,44 @@
+MCD2 Crossover
+
+Drag MCD2 Crossover into Applications, then open it there.
+
+You need an Apple Silicon Mac, CrossOver, Windows Steam and your own
+Steam copy of Minecraft Dungeons II. Open Steam and sign in once first.
+
+Quit the game before setup. Choose your Steam bottle, read the Microsoft
+license and click Set Up. Setup restarts Steam and backs up replaced files.
+If Microsoft’s Visual C++ installer opens, finish it to continue.
+
+Click Play. Complete the Microsoft code if asked and leave its small window
+open until it closes. Click the link or code to copy it.
+
+After setup and your first sign-in, you can play directly from Steam in
+the bottle you set up. You don’t need to open this app every time.
+Sign-in renews in the background; the saved Microsoft credential stays
+in macOS Keychain. If sign-in stops working, open the app and click Play
+to reconnect. Close Window leaves the game running.
+
+To choose another CrossOver bottle, quit the game and click Change Bottle
+on the home screen. Choose a bottle with Steam and the game installed,
+read the Microsoft license and click Use This Bottle. This keeps your
+Microsoft sign-in. Cancel leaves the current bottle unchanged.
+
+To switch Microsoft accounts, quit the game, click Sign Out, then Play.
+
+The app is not notarized. If macOS blocks it, approve it in System Settings
+> Privacy & Security. Keep Gatekeeper enabled.
+
+Repair Setup and Force Quit Game are in the MCD2 Crossover menu.
+Your saves and controller mods are left alone. Backups are kept in:
+~/Library/Application Support/DungeonsCrossOver/backups/
+
+Setup and Play in this app reached the game on an M5 Pro with CrossOver
+26.3. A completely new bottle, longer sessions, multiplayer and other
+Macs still need testing.
+
+Source, test results and rollback:
+https://github.com/Wanzho/mcd2-crossover
+
+Microsoft runtime files are downloaded from Microsoft during setup.
+This DMG contains no game files, Microsoft binaries or personal sign-in data.
+Python and library license notices are included inside the app.

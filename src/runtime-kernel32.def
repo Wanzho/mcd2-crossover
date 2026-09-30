@@ -1,0 +1,26 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+LoadLibraryA
+GetProcAddress
+GetModuleFileNameA
+CreateFileA
+WriteFile
+CloseHandle
+CreateThread
+Sleep
+GetProcessHeap
+HeapAlloc
+HeapFree
+AcquireSRWLockExclusive
+ReleaseSRWLockExclusive
+ReadFile
+GetSystemTimeAsFileTime
+GetTickCount64
+
+GetEnvironmentVariableA
+
+GetFileAttributesA
+
+DeleteFileA
+
+GetCurrentProcessId

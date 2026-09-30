@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement to MCD2 Crossover.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: What would you like to change?
+      description: Describe the feature or improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would that solve?
+      description: Explain when it would be useful.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Optional. Add examples or screenshots. Don't include sign-in codes or account credentials.
+    validations:
+      required: false

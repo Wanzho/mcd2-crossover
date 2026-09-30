@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Known startup and sign-in fixes
+    url: https://github.com/Wanzho/mcd2-crossover/blob/main/docs/FIXES.md
+    about: Check the fixes for prerequisite prompts, login errors and startup crashes.

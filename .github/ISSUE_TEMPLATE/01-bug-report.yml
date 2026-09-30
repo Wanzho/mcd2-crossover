@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a problem with setup, sign-in or running Minecraft Dungeons II.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [known fixes](https://github.com/Wanzho/mcd2-crossover/blob/main/docs/FIXES.md) and [existing issues](https://github.com/Wanzho/mcd2-crossover/issues) first.
+
+        Don't include passwords, Microsoft sign-in codes, tokens, session files or Keychain data. Hide account details and PlayFab IDs in screenshots.
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it fail?
+      options:
+        - First setup
+        - Repair Setup
+        - Change Bottle
+        - Microsoft or Xbox sign-in
+        - Play from MCD2 Crossover
+        - Launching directly from Steam
+        - During gameplay
+        - Sign Out
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Include the full error message or code, if there is one.
+      placeholder: "Microsoft said All done, but the game showed error 0060."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Describe what you clicked before the problem appeared. If it happens every time you launch, say so.
+      placeholder: |
+        1. Open MCD2 Crossover.
+        2. Click Play.
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: Mac and software
+      description: Include your Mac chip, macOS and CrossOver versions, and the MCD2 Crossover version if known. Write "Not sure" for anything you can't find.
+      placeholder: |
+        Mac chip:
+        macOS:
+        CrossOver:
+        MCD2 Crossover:
+        Graphics setting (if known):
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Optional. Mention any setup repair, sign-out, connection change or other attempt, and what happened afterward.
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or other details
+      description: Optional. Paste or drag screenshots here after hiding account details, sign-in codes and PlayFab IDs. Diagnostic files aren't required.
+    validations:
+      required: false

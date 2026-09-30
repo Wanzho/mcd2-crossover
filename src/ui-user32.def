@@ -1,0 +1,22 @@
+LIBRARY USER32.dll
+EXPORTS
+MessageBoxA
+FindWindowA
+PostMessageA
+RegisterClassExA
+CreateWindowExA
+DefWindowProcA
+SetWindowLongPtrA
+GetWindowLongPtrA
+DestroyWindow
+PostQuitMessage
+GetMessageA
+TranslateMessage
+DispatchMessageA
+ShowWindow
+SetForegroundWindow
+SendMessageA
+OpenClipboard
+EmptyClipboard
+SetClipboardData
+CloseClipboard
