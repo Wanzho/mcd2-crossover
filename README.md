@@ -80,4 +80,5 @@ Unofficial project. Not affiliated with Mojang, Microsoft or CodeWeavers.
 ## References
 
 Coded with Codex Astra 6 and Sol 6.1. Reviewed with Claude Opus 5.5.
+
 If you think this is Vibecoding slop, you are always welcome to use something else.
