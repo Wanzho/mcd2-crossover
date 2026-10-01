@@ -57,6 +57,7 @@ Issues resolved by this application:
 - **0063** — Log in failed
 - **0064** — Log in failed
 - **0020** — Microsoft account linking failed
+
 See [startup and sign-in fixes](docs/FIXES.md) for details.
 
 ## Tested
