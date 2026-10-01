@@ -15,12 +15,13 @@ Install CrossOver, Windows Steam and Minecraft Dungeons II first. Open Steam and
 1. Download **MCD2-Crossover-0.1.0-arm64.dmg** under **Assets** on the download page.
 2. Open it and drag **MCD2 Crossover** into **Applications**.
 3. Quit the game, then open **MCD2 Crossover** from Applications.
+If macOS blocks it, approve it in **System Settings → Privacy & Security**. 
 4. Choose your Steam bottle, read the Microsoft license and click **Set Up**. Setup restarts Steam. If Visual C++ is missing, finish the Microsoft installer that opens.
 5. Click **Play**. If a Microsoft code window appears, complete sign-in and leave that small window open until it closes. Click the link or code to copy it.
 
 No Terminal commands, Python install or build tools needed. Setup backs up replaced files and leaves your saves and controller mods alone.
 
-If macOS blocks it, approve it in **System Settings → Privacy & Security**. Keep Gatekeeper enabled. (I'm not gonna pay 100 bucks for Developer Program.)
+
 
 ## Next time you play
 
@@ -79,3 +80,4 @@ Unofficial project. Not affiliated with Mojang, Microsoft or CodeWeavers.
 ## References
 
 Coded with Codex Astra 6 and Sol 6.1. Reviewed with Claude Opus 5.5.
+If you think this is Vibecoding slop, you are always welcome to use something else.
