@@ -8,9 +8,14 @@ import argparse, hashlib, io, json, os, plistlib, shutil, subprocess, sys, time,
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from startup import configs, ensure_vc, install_launch, stop_steam, launch_options
+from startup import windows_path
+from game_copy import inspect_copy, STORES
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'helper'))
+import diagnostics
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
+CROSSOVER = Path('/Applications/CrossOver.app')
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
     'xgameruntime-adapter-thunks.dll':'862236063d4872f43435384eb4030dfa4b1fb6fbe91fe93969557de18c5f9601',
@@ -44,6 +49,7 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--bottle',default='Steam')
     parser.add_argument('--game',type=Path)
+    parser.add_argument('--store',choices=STORES,default='auto',help='Minecraft Launcher copies are experimental; game ownership is still checked by the original services.')
     parser.add_argument('--gdk-archive',type=Path)
     parser.add_argument('--curl-archive',type=Path)
     parser.add_argument('--accept-gdk-license',action='store_true',help='Accept the Microsoft GDK license linked in README.')
@@ -51,29 +57,30 @@ def main():
     parser.add_argument('--check-only',action='store_true',help='Check the selected game without installing or downloading anything.')
     args=parser.parse_args();os.umask(0o077)
     bottle=Path.home()/'Library/Application Support/CrossOver/Bottles'/args.bottle
-    game=args.game or bottle/'drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II'
-    binary=game/'Dungeons/Binaries/Win64'
-    if not (game/'MicrosoftGame.config').exists() or not (binary/'Dungeons-Win64-Shipping.exe').exists():
-        raise SystemExit('Select the installed Steam game with --game PATH.')
-    if not Path('/Applications/CrossOver.app').exists():raise SystemExit('Install CrossOver in Applications first.')
+    selected=args.game or bottle/'drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II'
+    copy=inspect_copy(selected,args.store)
+    game=Path(copy['root']);binary=Path(copy['binary']);store=copy['store']
+    if not CROSSOVER.exists():raise SystemExit('Install CrossOver in Applications first.')
     if not args.prepare_only:
         listing=subprocess.run(['ps','-axo','comm='],capture_output=True,text=True,errors='replace',check=True).stdout
         if any('Dungeons' in line and ('Shipping' in line or 'Binarie' in line) for line in listing.splitlines()):
             raise SystemExit('Finish and quit the game before replacing its DLLs. Use --prepare-only while playing.')
-        # Ensure a Steam profile exists before downloading or changing anything.
-        for path in configs(bottle):
-            launch_options(path.read_bytes().decode('utf-8'), '')
+        # Only Steam copies need Steam profiles and launch settings.
+        if store=='steam':
+            for path in configs(bottle):
+                launch_options(path.read_bytes().decode('utf-8'), '')
     if args.check_only:
         print('The selected game is ready for installation.');return
+    diagnostics.record(HOME,'setup_started',{'outcome':'started','store':store,'app_version':VERSION})
     HOME.mkdir(parents=True,mode=0o700,exist_ok=True);os.chmod(HOME,0o700)
     runtime=HOME/'runtime';runtime.mkdir(mode=0o700,exist_ok=True)
     if not args.prepare_only:
         ensure_vc(bottle, args.bottle, runtime, game)
-        stop_steam(bottle, args.bottle)
+        if store=='steam':stop_steam(bottle, args.bottle)
         backup=HOME/'backups'/str(time.time_ns());backup.mkdir(parents=True,mode=0o700)
         # Keep the previous helper/settings too, before updating them. Credentials
         # are not exported into the backup or release.
-        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','settings.json','installation.json'):
+        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','settings.json','installation.json'):
             previous=HOME/relative
             if previous.is_file():
                 dest=backup/'helper'/relative;dest.parent.mkdir(parents=True,exist_ok=True)
@@ -100,6 +107,7 @@ def main():
     for name in ('keychain','signin-ui.exe'):
         write(runtime/name,(ROOT/'build'/name).read_bytes(),True)
     write(runtime/'bridge.py',(ROOT/'helper/bridge.py').read_bytes())
+    write(runtime/'diagnostics.py',(ROOT/'helper/diagnostics.py').read_bytes())
     write(runtime/'curl-ca-bundle.crt',dependencies['curl-ca-bundle.crt'])
     env=HOME/'python'
     bundled=ROOT/'python'
@@ -108,7 +116,11 @@ def main():
         else:subprocess.run([sys.executable,'-m','venv',str(env)],check=True)
     check=subprocess.run([str(env/'bin/python'),'-c','from cryptography.hazmat.primitives.asymmetric import ec; ec.generate_private_key(ec.SECP256R1())'],capture_output=True)
     if check.returncode:subprocess.run([str(env/'bin/python'),'-m','pip','install','-r',str(ROOT/'helper/requirements.txt')],check=True)
-    settings={'bottle':args.bottle,'steam_exe':r'C:\Program Files (x86)\Steam\steam.exe','game':str(game)}
+    settings={'bottle':args.bottle,'game':str(game),'store':store,
+              'game_exe':windows_path(Path(copy['executable']),bottle),'binary':str(binary),
+              'launcher':'steam' if store=='steam' else 'direct',
+              'experimental':copy['experimental']}
+    if store=='steam':settings['steam_exe']=r'C:\Program Files (x86)\Steam\steam.exe'
     if args.prepare_only and (HOME/'settings.json').exists():
         settings.update(json.loads((HOME/'settings.json').read_text()))
     agents=Path.home()/'Library/LaunchAgents';agents.mkdir(parents=True,exist_ok=True)
@@ -119,6 +131,7 @@ def main():
     write(agents/'org.dungeons-crossover.auth.plist',plistlib.dumps(agent))
     if args.prepare_only:
         write(HOME/'settings.json',json.dumps(settings,indent=2).encode())
+        diagnostics.record(HOME,'setup_completed',{'outcome':'success','store':settings.get('store','steam'),'app_version':VERSION})
         print('Per-user helper prepared. The running game and its DLLs were left intact.');return
     installed={}
     data={**dependencies,'xgameruntime.dll':(ROOT/'build/xgameruntime.dll').read_bytes(),
@@ -128,17 +141,21 @@ def main():
         dest=binary/name
         if dest.exists():shutil.copy2(dest,backup/name)
         write(dest,value);installed[name]=digest(value)
-    option = install_launch(bottle, game, backup, write)
+    option = install_launch(bottle, game, backup, write) if store=='steam' else None
     # Retire the previous separate launchers only after the new setup succeeds.
     for name in ('Minecraft Dungeons II.app','Sign out.app','Launch Minecraft Dungeons II.command','Sign out.command'):
         old = HOME/name
         if old.exists():shutil.move(str(old),str(backup/name))
     settings['app_version'] = VERSION
     write(HOME/'settings.json',json.dumps(settings,indent=2).encode())
-    write(HOME/'installation.json',json.dumps({'game':str(game),'backup':str(backup),'files':installed,'steam_launch_options':option},indent=2).encode())
-    print('Setup complete. Press Play in MCD2 Crossover. Steam will reopen when you play.')
+    write(HOME/'installation.json',json.dumps({'game':str(game),'binary':str(binary),'executable':copy['executable'],
+          'store':store,'experimental':copy['experimental'],'backup':str(backup),'files':installed,
+          'steam_launch_options':option},indent=2).encode())
+    diagnostics.record(HOME,'setup_completed',{'outcome':'success','store':store,'app_version':VERSION})
+    print('Setup complete. Press Play in MCD2 Crossover. '+('Steam will reopen when you play.' if store=='steam' else 'This Minecraft Launcher copy is experimental; the game still checks ownership.'))
 
 if __name__=='__main__':
     try:main()
-    except (RuntimeError,ValueError,subprocess.CalledProcessError) as error:
+    except (RuntimeError,ValueError,OSError,subprocess.CalledProcessError) as error:
+        diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
         raise SystemExit(str(error))

@@ -9,6 +9,8 @@ from pathlib import Path
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed, decode_dss_signature
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+import diagnostics
 
 HOME = Path.home() / 'Library/Application Support/DungeonsCrossOver'
 ROOT = Path(__file__).resolve().parent
@@ -39,7 +41,7 @@ def atomic(path, data):
     finally: temp.unlink(missing_ok=True)
 
 def diagnostic(step, status=None, doc=None):
-    if not (HOME / 'logging.enabled').exists(): return
+    if not diagnostics.enabled(HOME): return
     row = {'step': step}
     if isinstance(status, int): row['http_status'] = status
     doc = doc or {}
@@ -283,6 +285,7 @@ def sign_out():
 
 def launch(bottle):
     if cancelled: raise AuthError('launch cancelled')
+    diagnostics.record(HOME,'launch_started',{'outcome':'started'})
     status = HOME/'status.json'
     active = False
     try:
@@ -318,10 +321,39 @@ def launch(bottle):
     else: raise AuthError('sign-in did not finish')
     if cancelled: raise AuthError('launch cancelled')
     settings = json.loads((HOME/'settings.json').read_text())
-    subprocess.Popen(['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle,
-                      '--debugmsg','-all',settings['steam_exe'],'-applaunch','1912410'],
+    command,working_directory=launch_command(settings,bottle)
+    subprocess.Popen(command,cwd=working_directory,
                      stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
-    print('Steam launch requested. Silent renewal continues in the background.')
+    diagnostics.record(HOME,'launch_requested',{'outcome':'success','store':settings.get('store','steam'),'app_version':settings.get('app_version')})
+    print(('Steam launch requested.' if settings.get('store','steam')=='steam' else 'Experimental Minecraft Launcher game launch requested. The game still checks ownership.')+' Silent renewal continues in the background.')
+
+def launch_command(settings,bottle):
+    """Choose a launch route without changing authentication or entitlement."""
+    command=['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
+             '--bottle',bottle,'--debugmsg','-all']
+    store=settings.get('store','steam')
+    if store=='steam':
+        return command+[settings.get('steam_exe',r'C:\Program Files (x86)\Steam\steam.exe'),'-applaunch','1912410'],None
+    if store!='launcher':raise AuthError('unknown game source')
+    game=Path(settings['game']);binary=Path(settings['binary']);executable=settings['game_exe']
+    # Refuse arbitrary commands or stale copy paths from hand-edited settings.
+    if not game.is_dir() or not binary.is_dir() or not (game/'MicrosoftGame.config').is_file():
+        raise AuthError('game copy missing')
+    if binary.name not in {'Win64','WinGDK'} or binary.resolve()!=(game/'Dungeons/Binaries'/binary.name).resolve():
+        raise AuthError('unknown game layout')
+    names={'Dungeons-Win64-Shipping.exe','Dungeons-WinGDK-Shipping.exe'}
+    if not isinstance(executable,str) or len(executable)<4 or executable[1:3]!=':\\' or executable[0].upper() not in {'C','Z'} or any(c in executable for c in ('\x00','\r','\n')) or executable.replace('\\','/').rsplit('/',1)[-1] not in names:
+        raise AuthError('game executable missing')
+    selected=binary/executable.replace('\\','/').rsplit('/',1)[-1]
+    if not selected.is_file():
+        raise AuthError('game executable missing')
+    # Use only the validated file in the selected game. A stale or hand-edited
+    # saved Windows directory must never redirect launch to another executable.
+    selected=selected.resolve()
+    drive=(Path.home()/'Library/Application Support/CrossOver/Bottles'/bottle/'drive_c').resolve()
+    try:target='C:\\'+str(selected.relative_to(drive)).replace('/','\\')
+    except ValueError:target='Z:'+str(selected).replace('/','\\')
+    return command+[target,'Dungeons','-windowed','-ResX=1600','-ResY=900'],str(game)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -332,27 +364,32 @@ def main():
         def cancel(signum, frame):
             global cancelled
             cancelled = True
-        # Finish any token rotation already in progress, then stop before Steam
+        # Finish any token rotation already in progress, then stop before the game
         # launches. Interactive sign-in observes the flag and closes its window.
         signal.signal(signal.SIGTERM,cancel)
     if args.command == 'serve': serve(args.bottle,args.interactive)
     elif args.command == 'launch': launch(args.bottle)
     elif args.command == 'stop-game':
         # User-requested recovery for a stuck game, scoped to the chosen bottle.
+        selected=json.loads((HOME/'settings.json').read_text())
+        executable=selected.get('game_exe','Dungeons-Win64-Shipping.exe').replace('\\','/').rsplit('/',1)[-1]
+        if executable not in {'Dungeons-Win64-Shipping.exe','Dungeons-WinGDK-Shipping.exe'}:
+            raise AuthError('unknown game executable')
         subprocess.run(['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
                         '--bottle',args.bottle,'--wait','--debugmsg','-all','taskkill.exe',
-                        '/F','/IM','Dungeons-Win64-Shipping.exe','/T'],
+                        '/F','/IM',executable,'/T'],
                        stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True)
     elif args.command == 'sign-out': sign_out()
     elif args.command == 'status':
         meta = session_meta();print(json.dumps({'session_present':meta is not None,
                                               'seconds_remaining':round(meta['expires']-time.time()) if meta else 0}))
-    elif args.command == 'logs-on': atomic(HOME/'logging.enabled',b'1')
-    elif args.command == 'logs-off': (HOME/'logging.enabled').unlink(missing_ok=True)
+    elif args.command == 'logs-on': diagnostics.start(HOME)
+    elif args.command == 'logs-off': diagnostics.stop(HOME)
 
 if __name__ == '__main__':
     try: main()
     except (AuthError,OSError,ValueError,KeyError) as error:
+        if sys.argv[1:2]==['launch']:diagnostics.record(HOME,'launch_failed',{'outcome':'failed'})
         # Do not stringify exceptions: urllib/server/OS errors may include secrets.
         print('Sign-in helper could not complete the operation. No authentication details were logged.',file=sys.stderr)
         sys.exit(1)

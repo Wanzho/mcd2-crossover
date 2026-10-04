@@ -16,6 +16,8 @@ body:
         - First setup
         - Repair Setup
         - Change Bottle
+        - Browse Game Copy
+        - Experimental Minecraft Launcher copy
         - Microsoft or Xbox sign-in
         - Play from MCD2 Crossover
         - Launching directly from Steam
@@ -53,6 +55,7 @@ body:
         macOS:
         CrossOver:
         MCD2 Crossover:
+        Game copy (Steam or Minecraft Launcher):
         Graphics setting (if known):
     validations:
       required: true
@@ -66,7 +69,7 @@ body:
   - type: textarea
     id: screenshots
     attributes:
-      label: Screenshots or other details
-      description: Optional. Paste or drag screenshots here after hiding account details, sign-in codes and PlayFab IDs. Diagnostic files aren't required.
+      label: Logs, screenshots or other details
+      description: Optional. In MCD2 Crossover, open Troubleshooting, click Start Recording and reproduce the problem, then Save Logs. Attach the ZIP here. Setup and sign-in problems can be recorded without the game running. Hide account details, sign-in codes and PlayFab IDs in screenshots.
     validations:
       required: false

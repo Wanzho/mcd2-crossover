@@ -13,7 +13,7 @@ def main():
     install=importlib.util.module_from_spec(spec);spec.loader.exec_module(install)
     actual_run=subprocess.run
     with tempfile.TemporaryDirectory(prefix='dungeons-install-test-') as temp:
-        root=Path(temp);user=root/'user';home=user/'Library/Application Support/DungeonsCrossOver'
+        root=Path(temp).resolve();user=root/'user';home=user/'Library/Application Support/DungeonsCrossOver'
         bottle=user/'Library/Application Support/CrossOver/Bottles/Fixture'
         game=bottle/'drive_c/Game';binary=game/'Dungeons/Binaries/Win64';binary.mkdir(parents=True)
         config=bottle/'drive_c/Program Files (x86)/Steam/userdata/fixture/config/localconfig.vdf'
@@ -88,5 +88,33 @@ def main():
         job=plistlib.loads((user/'Library/LaunchAgents/org.dungeons-crossover.auth.plist').read_bytes())
         assert job['ProgramArguments'][-1]=='Second'
         print('Bottle switch check passed: saved account preserved, new bottle set up, previous bottle intact and settings backed up.')
+        # Experimental Launcher layout: a game root/executable can be selected
+        # without Steam installed. No launch or account operation runs here.
+        launcher_bottle=user/'Library/Application Support/CrossOver/Bottles/LauncherFixture'
+        launcher_game=launcher_bottle/'drive_c/LauncherGame'
+        launcher_binary=launcher_game/'Dungeons/Binaries/WinGDK';launcher_binary.mkdir(parents=True)
+        launcher_exe=launcher_binary/'Dungeons-WinGDK-Shipping.exe'
+        launcher_exe.write_bytes(b'untouched experimental game fixture')
+        (launcher_game/'MicrosoftGame.config').write_text('<Game/>')
+        (launcher_binary/'XCurl.dll').write_bytes(original)
+        previous_settings=(home/'settings.json').read_bytes()
+        with patch.object(install,'HOME',home),patch.object(Path,'home',return_value=user),patch.object(sys,'argv',['install.py','--bottle','LauncherFixture','--game',str(launcher_exe),'--gdk-archive',str(args.gdk_archive),'--curl-archive',str(args.curl_archive),'--accept-gdk-license']),patch.object(install.subprocess,'run',side_effect=idle),patch.object(install,'ensure_vc'),patch.object(install,'stop_steam') as stopped,patch.object(install,'configs',side_effect=AssertionError('Launcher fixture must never access Steam settings')):
+            install.main();stopped.assert_not_called()
+        selected=json.loads((home/'settings.json').read_text())
+        assert selected['store']=='launcher';assert selected['launcher']=='direct';assert selected['experimental'] is True
+        assert selected['game']==str(launcher_game);assert selected['binary']==str(launcher_binary)
+        assert selected['game_exe']==r'C:\LauncherGame\Dungeons\Binaries\WinGDK\Dungeons-WinGDK-Shipping.exe'
+        assert not (launcher_game/'MCD2CrossoverLaunch.cmd').exists()
+        assert not (launcher_bottle/'drive_c/Program Files (x86)/Steam').exists()
+        assert (home/'session.bin').read_bytes()==session
+        assert (home/'signed-out').read_bytes()==b'synthetic marker left as-is'
+        assert launcher_exe.read_bytes()==b'untouched experimental game fixture'
+        assert config.read_bytes()==before_config
+        record=json.loads((home/'installation.json').read_text())
+        assert record['steam_launch_options'] is None
+        assert (Path(record['backup'])/'XCurl.dll').read_bytes()==original
+        assert (Path(record['backup'])/'helper/settings.json').read_bytes()==previous_settings
+        for name,digest in record['files'].items():assert install.digest((launcher_binary/name).read_bytes())==digest
+        print('Experimental Launcher fixture passed: no Steam lookups/changes, executable unchanged, backups made and shared sign-in untouched. Gameplay and ownership remain untested.')
 
 if __name__=='__main__':main()

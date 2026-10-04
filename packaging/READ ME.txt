@@ -25,6 +25,21 @@ Microsoft sign-in. Cancel leaves the current bottle unchanged.
 
 To switch Microsoft accounts, quit the game, click Sign Out, then Play.
 
+Browse Game Copy lets you choose a folder or its
+Dungeons-…-Shipping.exe. Choose Steam for the tested Steam route.
+Minecraft Launcher mode is experimental: it launches an existing Windows
+copy through CrossOver, but Windows Store licensing may still block it.
+It needs its own valid entitlement; a Steam purchase does not unlock it.
+Launcher gameplay has not been tested, and this app does not install the
+Launcher or download the game.
+
+For a problem report, open Troubleshooting in the top-right corner, start
+recording and reproduce the error. Save the logs and attach the ZIP at:
+https://github.com/Wanzho/mcd2-crossover/issues/new/choose
+Recording is off by default, stops after one hour and never uploads logs.
+The export contains selected, filtered diagnostics, not saved credentials,
+game saves or raw request bodies. Review it before sharing.
+
 The app is not notarized. If macOS blocks it, approve it in System Settings
 > Privacy & Security. Keep Gatekeeper enabled.
 

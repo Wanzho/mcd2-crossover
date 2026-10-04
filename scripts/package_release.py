@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Make a drag-to-Applications DMG without game files or Microsoft binaries."""
-import argparse, hashlib, json, plistlib, shutil, subprocess, sys, tarfile, tempfile, zipfile
+import argparse, hashlib, json, plistlib, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -26,7 +26,7 @@ def write_json(path,value):path.write_text(json.dumps(value,indent=2,sort_keys=T
 def finder_layout(stage, python):
     layout=ROOT/'build/layout-tools'
     if not (layout/'ds_store').exists():
-        run([python/'bin/python3','-m','pip','install','--only-binary=:all:','--no-compile',
+        run([python/'bin/python3','-I','-B','-m','pip','install','--only-binary=:all:','--no-compile',
              '--target',layout,'ds-store==1.3.1','mac-alias==2.2.3'])
     sys.path.insert(0,str(layout))
     from ds_store import DSStore
@@ -43,18 +43,39 @@ def finder_layout(stage, python):
         store['READ ME.txt']['Iloc']=(320,315)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.0');p.add_argument('--gdk-archive',type=Path,required=True)
+    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.1');p.add_argument('--gdk-archive',type=Path,required=True)
+    p.add_argument('--runtime-app',type=Path,help='Reuse the verified, pinned Python runtime from an existing local app without modifying it.')
     p.add_argument('--stage-only',action='store_true',help='Verify the signed app and save its stage without creating a DMG.')
     args=p.parse_args()
+    installed_version=re.search(r"^VERSION = '([^']+)'",(ROOT/'scripts/install.py').read_text(),re.M)
+    if not installed_version or installed_version[1]!=args.version:
+        raise SystemExit('App version must match scripts/install.py VERSION before packaging.')
     origin=source_origin(args.version)
     cache=ROOT/'build/release-cache';cache.mkdir(parents=True,exist_ok=True)
     archive=cache/'python-arm64.tar.gz'
     if not archive.exists():run(['/usr/bin/curl','--fail','--location','--silent','--show-error',PYTHON_URL,'-o',archive])
     if hashlib.sha256(archive.read_bytes()).hexdigest()!=PYTHON_SHA256:raise SystemExit('Python runtime checksum mismatch.')
     python=cache/'python'
-    if not python.exists():
+    if args.runtime_app:
+        runtime_origin=args.runtime_app/'Contents/Resources/runtime-origin.json'
+        expected={'python_url':PYTHON_URL,'python_sha256':PYTHON_SHA256,
+                  'packages':{'cryptography':'46.0.7','cffi':'2.1.1','pycparser':'3.0'}}
+        if json.loads(runtime_origin.read_text())!=expected:
+            raise SystemExit('The supplied app does not contain the pinned runtime.')
+        run(['/usr/bin/codesign','--verify','--deep','--strict',args.runtime_app])
+        python=args.runtime_app/'Contents/Resources/python'
+    elif not python.exists():
         with tarfile.open(archive) as z:z.extractall(cache,filter='data')
-    run([python/'bin/python3','-m','pip','install','--only-binary=:all:','--no-compile','cryptography==46.0.7','cffi==2.1.1','pycparser==3.0'])
+    # An unchanged rebuild can use its verified, pinned libraries offline.
+    # Avoid invoking pip (and updating its cache) for an already ready runtime.
+    check=subprocess.run([str(python/'bin/python3'),'-I','-B','-c',
+        'from importlib.metadata import version; '
+        'assert all(version(p)==v for p,v in {"cryptography":"46.0.7","cffi":"2.1.1","pycparser":"3.0"}.items()); '
+        'from cryptography.hazmat.primitives.asymmetric import ec; ec.generate_private_key(ec.SECP256R1())'],
+        stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    if check.returncode:
+        if args.runtime_app:raise SystemExit('The supplied app runtime failed validation; it was left unchanged.')
+        run([python/'bin/python3','-I','-B','-m','pip','install','--only-binary=:all:','--no-compile','cryptography==46.0.7','cffi==2.1.1','pycparser==3.0'])
     # Stage outside synced Documents folders: Finder can add package attributes
     # there while a code signature is being sealed.
     stage=Path(tempfile.mkdtemp(prefix='dungeons-release-'))/'MCD2 Crossover';stage.mkdir()
@@ -64,9 +85,9 @@ def main():
         'CFBundleName':'MCD2 Crossover','CFBundleDisplayName':'MCD2 Crossover','CFBundleIconFile':'AppIcon.icns',
         'CFBundleVersion':args.version,'CFBundleShortVersionString':args.version,'CFBundlePackageType':'APPL','LSMinimumSystemVersion':'13.0',
         'NSHighResolutionCapable':True}))
-    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
+    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
     shutil.copy2(ROOT/'assets/AppIcon.icns',resources/'AppIcon.icns')
-    for folder,names in {'scripts':['install.py','startup.py'],'helper':['bridge.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
+    for folder,names in {'scripts':['install.py','startup.py','game_copy.py'],'helper':['bridge.py','diagnostics.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
         dest=resources/folder;dest.mkdir()
         for name in names:shutil.copy2(ROOT/folder/name,dest/name)
     shutil.copytree(python,resources/'python',symlinks=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
@@ -88,9 +109,9 @@ def main():
     write_json(source_manifest,origin)
     shutil.copy2(ROOT/'packaging/READ ME.txt',stage/'READ ME.txt')
     (stage/'Applications').symlink_to('/Applications',target_is_directory=True)
-    finder_layout(stage,python)
+    finder_layout(stage,resources/'python')
     forbidden={'session.bin','settings.json','installation.json','status.json','logging.enabled',
-               'xgameruntime-native.dll','xgameruntime-adapter-thunks.dll','curl-compat.dll','Dungeons-Win64-Shipping.exe'}
+               'xgameruntime-native.dll','xgameruntime-adapter-thunks.dll','curl-compat.dll','Dungeons-Win64-Shipping.exe','Dungeons-WinGDK-Shipping.exe'}
     private_prefix=str(Path.home()).encode()
     for path in app.rglob('*'):
         if path.is_file():

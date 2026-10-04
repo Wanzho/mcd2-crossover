@@ -25,3 +25,4 @@ DeleteFileA
 GetCurrentProcessId
 
 GetTickCount64
+GetSystemTimeAsFileTime

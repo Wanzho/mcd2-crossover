@@ -23,3 +23,15 @@ Visual C++ tests cover both registry views and mixed casing, opening the install
 - Installing Visual C++ in a bottle where it is missing.
 - Longer play sessions, missions, multiplayer and other Macs.
 - Downloading and opening the app through Gatekeeper. The app is not notarized.
+
+## 0.1.1
+
+The confirmed Steam gameplay results above belong to the previous build; they do not establish Launcher compatibility.
+
+Added a game-copy browser, an experimental Minecraft Launcher selection and a corner **Troubleshooting…** button for opt-in recording and ZIP export.
+
+57 automated checks passed with both system Python and the app's bundled Python. They cover copy selection, the Steam and direct launch routes, recording expiry, filtered exports and malformed log lines. The native app compiled, the native one-hour expiry check passed, and the troubleshooting button and sheet were visually inspected. These checks used disposable files and synthetic accounts; no live bottle was changed.
+
+The signed 0.1.1 app passed installation checks for Steam, a second bottle and a Launcher fixture using the official dependency archives. Backups, the relocated Python runtime and unchanged account/session files were verified. These checks do not establish Launcher gameplay support.
+
+No owned Launcher/non-Steam build is available for a gameplay test. The direct CrossOver launch may still fail at Windows Store licensing. Signing into a linked Microsoft account does not transfer a Steam game license to the Launcher edition.
