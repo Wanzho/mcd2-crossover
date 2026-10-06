@@ -1552,7 +1552,6 @@ kbd.wide { min-width: 4.2em; }
 .needs-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
 .needs-list li { display: flex; align-items: flex-start; gap: 14px; padding: 20px 20px 22px; border-radius: var(--radius-m); background: var(--surface); color: var(--c1); }
 .needs-list svg { flex: none; margin-top: 2px; }
-.needs-list .needs-app { flex: none; width: 34px; height: 34px; margin: -1px -2px 0 -2px; }
 .needs-list span { display: grid; gap: 4px; font-size: 15px; line-height: 1.35; color: var(--text-2); }
 .needs-list b { font-size: 17px; line-height: 1.25; color: var(--text); }
 .panels { margin-top: clamp(56px, 8vh, 88px); }
