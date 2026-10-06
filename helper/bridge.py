@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed, decode_dss_signature
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import diagnostics
+import localization
 
 HOME = Path.home() / 'Library/Application Support/DungeonsCrossOver'
 ROOT = Path(__file__).resolve().parent
@@ -196,7 +197,7 @@ def interactive(bottle):
     ui = subprocess.Popen(['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
                            '--bottle',bottle,'--debugmsg','-all',str(HOME/'runtime/signin-ui.exe')],
                           stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    ui.stdin.write((url+'\n'+start['user_code']+'\n').encode());ui.stdin.flush()
+    ui.stdin.write(localization.prompt_payload(url,start['user_code'],HOME));ui.stdin.flush()
     try:
         deadline = time.monotonic()+min(start.get('expires_in',600)-5,600)
         interval = max(start.get('interval',5),5)

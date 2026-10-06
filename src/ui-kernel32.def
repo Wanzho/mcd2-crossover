@@ -22,3 +22,5 @@ GetModuleHandleA
 GetStdHandle
 ReadFile
 ExitProcess
+
+MultiByteToWideChar

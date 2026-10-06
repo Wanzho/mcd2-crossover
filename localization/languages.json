@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "source": "https://store.steampowered.com/app/1912410/",
+  "additional_regional_source": "https://www.minecraft.net/en-us/store/minecraft-dungeons-ii-deluxe-edition",
+  "languages": [
+    {
+      "id": "en",
+      "name": "English"
+    },
+    {
+      "id": "fr",
+      "name": "Français"
+    },
+    {
+      "id": "it",
+      "name": "Italiano"
+    },
+    {
+      "id": "de",
+      "name": "Deutsch"
+    },
+    {
+      "id": "es-ES",
+      "name": "Español (España)"
+    },
+    {
+      "id": "nl",
+      "name": "Nederlands"
+    },
+    {
+      "id": "ja",
+      "name": "日本語"
+    },
+    {
+      "id": "ko",
+      "name": "한국어"
+    },
+    {
+      "id": "pl",
+      "name": "Polski"
+    },
+    {
+      "id": "pt-BR",
+      "name": "Português (Brasil)"
+    },
+    {
+      "id": "pt-PT",
+      "name": "Português (Portugal)"
+    },
+    {
+      "id": "ru",
+      "name": "Русский"
+    },
+    {
+      "id": "es-419",
+      "name": "Español (Latinoamérica)"
+    },
+    {
+      "id": "sv",
+      "name": "Svenska"
+    },
+    {
+      "id": "zh-Hans",
+      "name": "简体中文"
+    },
+    {
+      "id": "zh-Hant",
+      "name": "繁體中文"
+    },
+    {
+      "id": "tr",
+      "name": "Türkçe"
+    },
+    {
+      "id": "uk",
+      "name": "Українська"
+    }
+  ],
+  "aliases": {
+    "en-US": "en",
+    "en-GB": "en",
+    "fr-FR": "fr",
+    "fr-CA": "fr",
+    "it-IT": "it",
+    "de-DE": "de",
+    "nl-NL": "nl",
+    "ja-JP": "ja",
+    "ko-KR": "ko",
+    "pl-PL": "pl",
+    "ru-RU": "ru",
+    "es-MX": "es-419",
+    "sv-SE": "sv",
+    "zh-CN": "zh-Hans",
+    "zh-SG": "zh-Hans",
+    "zh-TW": "zh-Hant",
+    "zh-HK": "zh-Hant",
+    "tr-TR": "tr",
+    "uk-UA": "uk"
+  }
+}

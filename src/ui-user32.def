@@ -20,3 +20,15 @@ OpenClipboard
 EmptyClipboard
 SetClipboardData
 CloseClipboard
+
+MessageBoxW
+FindWindowW
+PostMessageW
+RegisterClassExW
+CreateWindowExW
+DefWindowProcW
+SetWindowLongPtrW
+GetWindowLongPtrW
+GetMessageW
+DispatchMessageW
+SendMessageW

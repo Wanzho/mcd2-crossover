@@ -2,6 +2,7 @@
 """Make a drag-to-Applications DMG without game files or Microsoft binaries."""
 import argparse, hashlib, json, plistlib, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 from pathlib import Path
+from localize import native_resources
 
 ROOT=Path(__file__).resolve().parents[1]
 PYTHON_URL='https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.13.15%2B20260929-aarch64-apple-darwin-install_only_stripped.tar.gz'
@@ -43,7 +44,7 @@ def finder_layout(stage, python):
         store['READ ME.txt']['Iloc']=(320,315)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.1');p.add_argument('--gdk-archive',type=Path,required=True)
+    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.2');p.add_argument('--gdk-archive',type=Path,required=True)
     p.add_argument('--runtime-app',type=Path,help='Reuse the verified, pinned Python runtime from an existing local app without modifying it.')
     p.add_argument('--stage-only',action='store_true',help='Verify the signed app and save its stage without creating a DMG.')
     args=p.parse_args()
@@ -52,9 +53,6 @@ def main():
         raise SystemExit('App version must match scripts/install.py VERSION before packaging.')
     origin=source_origin(args.version)
     cache=ROOT/'build/release-cache';cache.mkdir(parents=True,exist_ok=True)
-    archive=cache/'python-arm64.tar.gz'
-    if not archive.exists():run(['/usr/bin/curl','--fail','--location','--silent','--show-error',PYTHON_URL,'-o',archive])
-    if hashlib.sha256(archive.read_bytes()).hexdigest()!=PYTHON_SHA256:raise SystemExit('Python runtime checksum mismatch.')
     python=cache/'python'
     if args.runtime_app:
         runtime_origin=args.runtime_app/'Contents/Resources/runtime-origin.json'
@@ -64,8 +62,12 @@ def main():
             raise SystemExit('The supplied app does not contain the pinned runtime.')
         run(['/usr/bin/codesign','--verify','--deep','--strict',args.runtime_app])
         python=args.runtime_app/'Contents/Resources/python'
-    elif not python.exists():
-        with tarfile.open(archive) as z:z.extractall(cache,filter='data')
+    else:
+        archive=cache/'python-arm64.tar.gz'
+        if not archive.exists():run(['/usr/bin/curl','--fail','--location','--silent','--show-error',PYTHON_URL,'-o',archive])
+        if hashlib.sha256(archive.read_bytes()).hexdigest()!=PYTHON_SHA256:raise SystemExit('Python runtime checksum mismatch.')
+        if not python.exists():
+            with tarfile.open(archive) as z:z.extractall(cache,filter='data')
     # An unchanged rebuild can use its verified, pinned libraries offline.
     # Avoid invoking pip (and updating its cache) for an already ready runtime.
     check=subprocess.run([str(python/'bin/python3'),'-I','-B','-c',
@@ -81,13 +83,16 @@ def main():
     stage=Path(tempfile.mkdtemp(prefix='dungeons-release-'))/'MCD2 Crossover';stage.mkdir()
     app=stage/'MCD2 Crossover.app';contents=app/'Contents';resources=contents/'Resources'
     (contents/'MacOS').mkdir(parents=True);resources.mkdir()
+    metadata=native_resources(resources)
+    shutil.copytree(ROOT/'localization',resources/'localization')
     (contents/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'installer','CFBundleIdentifier':'org.dungeons-crossover.app',
+        'CFBundleDevelopmentRegion':'en','CFBundleLocalizations':[row['id'] for row in metadata['languages']],
         'CFBundleName':'MCD2 Crossover','CFBundleDisplayName':'MCD2 Crossover','CFBundleIconFile':'AppIcon.icns',
         'CFBundleVersion':args.version,'CFBundleShortVersionString':args.version,'CFBundlePackageType':'APPL','LSMinimumSystemVersion':'13.0',
         'NSHighResolutionCapable':True}))
     run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
     shutil.copy2(ROOT/'assets/AppIcon.icns',resources/'AppIcon.icns')
-    for folder,names in {'scripts':['install.py','startup.py','game_copy.py'],'helper':['bridge.py','diagnostics.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
+    for folder,names in {'scripts':['install.py','startup.py','game_copy.py','game_process.py'],'helper':['bridge.py','diagnostics.py','localization.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
         dest=resources/folder;dest.mkdir()
         for name in names:shutil.copy2(ROOT/folder/name,dest/name)
     shutil.copytree(python,resources/'python',symlinks=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
@@ -101,8 +106,12 @@ def main():
     (resources/'python/bin/cffi-gen-src').unlink(missing_ok=True)
     licenses=resources/'licenses';licenses.mkdir()
     shutil.copy2(ROOT/'LICENSE',licenses/'Dungeons-CrossOver-LICENSE.txt')
-    with zipfile.ZipFile(args.gdk_archive) as z:
-        (licenses/'Microsoft-GDK-LICENSE.md').write_bytes(z.read('LICENSE.md'))
+    if args.runtime_app:
+        gdk_license=(args.runtime_app/'Contents/Resources/licenses/Microsoft-GDK-LICENSE.md').read_bytes()
+    else:
+        with zipfile.ZipFile(args.gdk_archive) as z:gdk_license=z.read('LICENSE.md')
+    if not gdk_license.strip():raise SystemExit('Microsoft GDK license is empty.')
+    (licenses/'Microsoft-GDK-LICENSE.md').write_bytes(gdk_license)
     (resources/'runtime-origin.json').write_text(json.dumps({'python_url':PYTHON_URL,'python_sha256':PYTHON_SHA256,
         'packages':{'cryptography':'46.0.7','cffi':'2.1.1','pycparser':'3.0'}},indent=2)+'\n')
     source_manifest=resources/'source-origin.json'

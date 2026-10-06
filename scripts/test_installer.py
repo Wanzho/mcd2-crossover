@@ -27,15 +27,16 @@ def main():
         (binary/'xgameruntime.dll').write_bytes(original)
         argv=['install.py','--bottle','Fixture','--game',str(game)]
         def run(argv,*a,**kw):
-            if argv[:2]==['ps','-axo']:return subprocess.CompletedProcess(argv,0,stdout='Dungeons-Win64-Shipping.exe\n')
+            if argv[:2]==['/bin/ps','-axo']:return subprocess.CompletedProcess(argv,0,stdout='701 C:\\Game\\Dungeons\\Binaries\\Win64\\Dungeons-Win64-Shipping.exe\n')
+            if argv[:3]==['/usr/sbin/lsof','-a','-p']:return subprocess.CompletedProcess(argv,0,stdout='p701\nn'+str(binary/'Dungeons-Win64-Shipping.exe')+'\n')
             return actual_run(argv,*a,**kw)
         with patch.object(install,'HOME',home),patch.object(Path,'home',return_value=user),patch.object(sys,'argv',argv),patch.object(install.subprocess,'run',side_effect=run):
             try:install.main()
-            except SystemExit as error:assert 'quit the game' in str(error)
+            except install.RunningGameError as error:assert error.exit_code==20
             else:raise AssertionError('Installer did not refuse a running game')
             assert not home.exists();assert (binary/'XCurl.dll').read_bytes()==original
         def idle(argv,*a,**kw):
-            if argv[:2]==['ps','-axo']:return subprocess.CompletedProcess(argv,0,stdout='')
+            if argv[:2] in (['ps','-axo'],['/bin/ps','-axo']):return subprocess.CompletedProcess(argv,0,stdout='')
             return actual_run(argv,*a,**kw)
         with patch.object(install,'HOME',home),patch.object(Path,'home',return_value=user),patch.object(sys,'argv',argv),patch.object(install.subprocess,'run',side_effect=idle),patch.object(install,'ensure_vc'),patch.object(install,'stop_steam'):install.main()
         record=json.loads((home/'installation.json').read_text())

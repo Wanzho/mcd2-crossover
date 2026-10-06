@@ -10,11 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from startup import configs, ensure_vc, install_launch, stop_steam, launch_options
 from startup import windows_path
 from game_copy import inspect_copy, STORES
+from game_process import require_idle, RunningGameError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'helper'))
 import diagnostics
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 CROSSOVER = Path('/Applications/CrossOver.app')
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
@@ -55,16 +56,18 @@ def main():
     parser.add_argument('--accept-gdk-license',action='store_true',help='Accept the Microsoft GDK license linked in README.')
     parser.add_argument('--prepare-only',action='store_true',help='Install helper/dependencies without replacing the running game DLLs.')
     parser.add_argument('--check-only',action='store_true',help='Check the selected game without installing or downloading anything.')
+    parser.add_argument('--ignore-other-game-detection',action='store_true',help='Continue past other-game or uncertain process warnings. Steam setup restarts Steam in this bottle. A confirmed running selected copy is always refused.')
     args=parser.parse_args();os.umask(0o077)
     bottle=Path.home()/'Library/Application Support/CrossOver/Bottles'/args.bottle
     selected=args.game or bottle/'drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II'
     copy=inspect_copy(selected,args.store)
     game=Path(copy['root']);binary=Path(copy['binary']);store=copy['store']
     if not CROSSOVER.exists():raise SystemExit('Install CrossOver in Applications first.')
+    def check_running(shared_steam=False):
+        require_idle(copy['executable'], bottle, shared_steam=shared_steam,
+                     ignore_other=args.ignore_other_game_detection)
     if not args.prepare_only:
-        listing=subprocess.run(['ps','-axo','comm='],capture_output=True,text=True,errors='replace',check=True).stdout
-        if any('Dungeons' in line and ('Shipping' in line or 'Binarie' in line) for line in listing.splitlines()):
-            raise SystemExit('Finish and quit the game before replacing its DLLs. Use --prepare-only while playing.')
+        check_running(shared_steam=store=='steam' and not args.check_only)
         # Only Steam copies need Steam profiles and launch settings.
         if store=='steam':
             for path in configs(bottle):
@@ -76,15 +79,19 @@ def main():
     runtime=HOME/'runtime';runtime.mkdir(mode=0o700,exist_ok=True)
     if not args.prepare_only:
         ensure_vc(bottle, args.bottle, runtime, game)
+        check_running(shared_steam=store=='steam')
         if store=='steam':stop_steam(bottle, args.bottle)
         backup=HOME/'backups'/str(time.time_ns());backup.mkdir(parents=True,mode=0o700)
         # Keep the previous helper/settings too, before updating them. Credentials
         # are not exported into the backup or release.
-        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','settings.json','installation.json'):
+        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','settings.json','installation.json'):
             previous=HOME/relative
             if previous.is_file():
                 dest=backup/'helper'/relative;dest.parent.mkdir(parents=True,exist_ok=True)
                 shutil.copy2(previous,dest)
+        previous_catalogs=runtime/'localization'
+        if previous_catalogs.is_dir() and not previous_catalogs.is_symlink():
+            shutil.copytree(previous_catalogs,backup/'helper/runtime/localization')
     for name in ('Microsoft-GDK-LICENSE.md','curl-LICENSE.txt'):
         notice=ROOT/'licenses'/name
         if notice.exists():write(runtime/name,notice.read_bytes())
@@ -108,6 +115,10 @@ def main():
         write(runtime/name,(ROOT/'build'/name).read_bytes(),True)
     write(runtime/'bridge.py',(ROOT/'helper/bridge.py').read_bytes())
     write(runtime/'diagnostics.py',(ROOT/'helper/diagnostics.py').read_bytes())
+    write(runtime/'localization.py',(ROOT/'helper/localization.py').read_bytes())
+    for catalog in sorted((ROOT/'localization').glob('*.json')):
+        destination=runtime/'localization';destination.mkdir(mode=0o700,exist_ok=True)
+        write(destination/catalog.name,catalog.read_bytes())
     write(runtime/'curl-ca-bundle.crt',dependencies['curl-ca-bundle.crt'])
     env=HOME/'python'
     bundled=ROOT/'python'
@@ -133,6 +144,9 @@ def main():
         write(HOME/'settings.json',json.dumps(settings,indent=2).encode())
         diagnostics.record(HOME,'setup_completed',{'outcome':'success','store':settings.get('store','steam'),'app_version':VERSION})
         print('Per-user helper prepared. The running game and its DLLs were left intact.');return
+    # Downloads and installer windows can take time. Recheck immediately before
+    # publishing selected game DLLs, with the same explicit retry policy.
+    check_running(shared_steam=store=='steam')
     installed={}
     data={**dependencies,'xgameruntime.dll':(ROOT/'build/xgameruntime.dll').read_bytes(),
           'XCurl.dll':(ROOT/'build/XCurl.dll').read_bytes(),
@@ -156,6 +170,13 @@ def main():
 
 if __name__=='__main__':
     try:main()
+    except RunningGameError as error:
+        if '--check-only' not in sys.argv[1:]:
+            diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
+        print(error.marker,file=sys.stderr)
+        print(str(error),file=sys.stderr)
+        raise SystemExit(error.exit_code)
     except (RuntimeError,ValueError,OSError,subprocess.CalledProcessError) as error:
-        diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
+        if '--check-only' not in sys.argv[1:]:
+            diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
         raise SystemExit(str(error))

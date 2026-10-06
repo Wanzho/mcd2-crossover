@@ -1,5 +1,11 @@
 # Testing
 
+## 0.1.2
+
+91 automated tests passed. Native checks covered account display and all 18 app translation catalogs: the 17 languages listed for the Steam game plus European Portuguese. The actual sign-in prompt parser passed Unicode, clipboard and malformed-input checks. The helpers and compatibility DLLs rebuilt successfully.
+
+The compact Change Game Copy sheet passed native layout and selection checks across the catalogs. Cancel restores the current copy; Done leaves an unchanged selection alone and runs full setup for a changed copy. These checks used disposable settings and did not change a live bottle or account. Existing gameplay results below belong to earlier builds.
+
 Tested on an M5 Pro with CrossOver 26.3. Setup and direct Steam launch were confirmed on 30 September 2026. This build supports Apple Silicon only.
 
 ## Confirmed

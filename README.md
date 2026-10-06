@@ -6,13 +6,13 @@ Repairs Steam startup, runtime dependencies, networking and Microsoft/Xbox sign-
 
 <img width="588" height="504" alt="Screenshot 2026-10-01 at 01 04 03" src="https://github.com/user-attachments/assets/46ba1909-937e-4134-93e9-4b90c623c628" />
 
-**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.1)**
+**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.2)**
 
 ## Install
 
 Install CrossOver, Windows Steam and Minecraft Dungeons II first. Open Steam and sign in at least once.
 
-1. Download **MCD2-Crossover-0.1.1-arm64.dmg** under **Assets** on the download page.
+1. Download **MCD2-Crossover-0.1.2-arm64.dmg** under **Assets** on the download page.
 2. Open it and drag **MCD2 Crossover** into **Applications**.
 3. Quit the game, then open **MCD2 Crossover** from Applications.
 If macOS blocks it, approve it in **System Settings → Privacy & Security**. 
@@ -33,13 +33,20 @@ If Steam can’t sign in because the saved session expired or renewal stopped, o
 
 ## Change CrossOver bottles
 
-Quit the game, open **MCD2 Crossover** and click **Change Bottle…** beside the current bottle on the home screen. Choose another bottle with Windows Steam and Minecraft Dungeons II installed, read the Microsoft license and click **Use This Bottle**. Setup restarts Steam in that bottle and backs up replaced files.
+Quit the game, open **MCD2 Crossover** and click **Change Game Copy…** on the home screen. A compact sheet opens over the launcher. Choose another bottle or game copy and click **Done**. Changing the copy runs setup, restarts Steam in that bottle and backs up replaced files.
 
 Your Microsoft sign-in stays saved. The previous bottle keeps its repair; the app’s Play button now uses the new bottle. **Cancel** takes you back without changing anything. Sign Out is only for removing your saved Microsoft login or switching accounts.
 
 ## Sign out or switch accounts
 
 Quit the game, open **MCD2 Crossover**, and click **Sign Out**. This removes the saved Microsoft credential and local session. Click **Play** to sign in again with the account you want.
+
+## New in 0.1.2
+
+- Shows **Signed in to:** with your Xbox username.
+- Opens **Change Game Copy…** in a compact sheet, keeping the home screen underneath.
+- Adds **It isn’t open!** when another game or an uncertain process check blocks setup. The selected game’s files stay protected while it is running.
+- Translates the app and sign-in window into all 17 languages listed for Dungeons II on Steam, plus European Portuguese. Choose **Language…** from the app menu.
 
 ## New in 0.1.1
 
