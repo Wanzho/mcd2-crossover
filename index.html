@@ -1,244 +1,575 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minecraft Dungeons II on Mac with CrossOver – MCD2 Crossover</title>
-<meta name="description" content="Free fix for Minecraft Dungeons II (Dungeons 2) on Apple Silicon Macs with CrossOver: Visual C++ and Game Runtime prompts, errors 0060, 0063, 0064 and 0020.">
+<meta name="description" content="Play Minecraft Dungeons II (Dungeons 2) on an Apple silicon Mac with CrossOver. A free, open-source app that fixes the Visual C++ and Game Runtime prompts and sign-in errors 0060, 0063, 0064 and 0020 for the Steam version.">
 <link rel="canonical" href="https://wanzho.github.io/mcd2-crossover/">
-<!-- Google Search Console: paste the google-site-verification meta tag on the next line. -->
-
+<meta name="robots" content="max-image-preview:large">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Minecraft Dungeons II on Mac with CrossOver">
-<meta property="og:description" content="Free setup and sign-in fix for the Steam version on Apple Silicon. Fixes errors 0060, 0063, 0064 and 0020.">
+<meta property="og:site_name" content="MCD2 Crossover">
+<meta property="og:title" content="Minecraft Dungeons II on Mac with CrossOver – MCD2 Crossover">
+<meta property="og:description" content="Set up once. Sign in. Play. Start-up and Xbox sign-in fixes for the Steam version on Apple silicon: Visual C++, Game Runtime, 0060, 0063, 0064 and 0020.">
 <meta property="og:url" content="https://wanzho.github.io/mcd2-crossover/">
-<meta property="og:image" content="https://wanzho.github.io/mcd2-crossover/icon-512.png">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://wanzho.github.io/mcd2-crossover/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A glowing stone portal beside the words: Dungeons II. Now on your Mac. Set up once. Sign in. Play. For the Steam version in CrossOver.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Minecraft Dungeons II on Mac with CrossOver – MCD2 Crossover">
+<meta name="twitter:description" content="Set up once. Sign in. Play. Free start-up and sign-in fixes for the Steam version on Apple silicon Macs.">
+<meta name="twitter:image" content="https://wanzho.github.io/mcd2-crossover/og.png">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#1b1f27">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="preload" href="pixel.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="app-demo.css">
+<script>
+  (function (d) {
+    d.classList.remove('no-js'); d.classList.add('js');
+    if (!window.matchMedia || !matchMedia('(prefers-reduced-motion: reduce)').matches) d.classList.add('motion');
+    // if site.js can't run, show everything without the scroll scenes
+    setTimeout(function () { if (!window.__mcdSite) d.classList.remove('motion'); }, 3000);
+  })(document.documentElement);
+</script>
+<script src="site.js" defer></script>
+<script src="app-demo.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "MCD2 Crossover",
-  "description": "Setup and sign-in fix for Minecraft Dungeons II (Steam) on Apple Silicon Macs with CrossOver.",
-  "operatingSystem": "macOS (Apple Silicon)",
+  "alternateName": "Minecraft Dungeons II on Mac with CrossOver",
+  "description": "Setup and Xbox sign-in fixes for Minecraft Dungeons II (Steam) on Apple silicon Macs with CrossOver: Visual C++ and Game Runtime prompts, errors 0060, 0063, 0064 and 0020.",
+  "operatingSystem": "macOS 13 or later (Apple silicon)",
   "applicationCategory": "UtilitiesApplication",
-  "softwareVersion": "0.1.0",
+  "softwareVersion": "0.1.3",
+  "inLanguage": ["en", "fr", "it", "de", "es-ES", "nl", "ja", "ko", "pl", "pt-BR", "pt-PT", "ru", "es-419", "sv", "zh-Hans", "zh-Hant", "tr", "uk"],
   "license": "https://opensource.org/licenses/MIT",
   "url": "https://wanzho.github.io/mcd2-crossover/",
+  "image": "https://wanzho.github.io/mcd2-crossover/og.png",
   "downloadUrl": "https://github.com/Wanzho/mcd2-crossover/releases/latest",
   "codeRepository": "https://github.com/Wanzho/mcd2-crossover",
+  "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
-<style>
-:root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --text: #16191f;
-  --muted: #5b6270;
-  --line: #e2e5ea;
-  --accent: #0f8fb3;
-  --accent-text: #ffffff;
-  --warm: #c46a1f;
-  --code-bg: #eef1f4;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14171d;
-    --surface: #1d2129;
-    --text: #e9ecf1;
-    --muted: #9aa3b2;
-    --line: #2c323d;
-    --accent: #3cc6ea;
-    --accent-text: #08202a;
-    --warm: #f0a35e;
-    --code-bg: #262b35;
-  }
-}
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 17px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-a { color: var(--accent); }
-.wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
-
-header.top { border-bottom: 1px solid var(--line); }
-header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); text-decoration: none; }
-.brand img { width: 30px; height: 30px; }
-nav { display: flex; gap: 20px; font-size: 15px; }
-nav a { color: var(--muted); text-decoration: none; }
-nav a:hover { color: var(--text); }
-
-.hero { padding: 56px 0 40px; display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; }
-.hero h1 { font-size: 44px; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; }
-.hero p.lead { font-size: 19px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
-.hero .icon { width: 168px; height: 168px; }
-.buttons { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.btn { display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 600; text-decoration: none; }
-.btn.primary { background: var(--accent); color: var(--accent-text); }
-.btn.secondary { border: 1px solid var(--line); color: var(--text); background: var(--surface); }
-.fine { font-size: 14px; color: var(--muted); margin-top: 14px; }
-
-section { padding: 36px 0; border-top: 1px solid var(--line); }
-h2 { font-size: 28px; letter-spacing: -0.01em; margin: 0 0 16px; }
-h3 { font-size: 18px; margin: 24px 0 6px; }
-
-.shot { margin: 8px auto 0; text-align: center; }
-.shot img { width: 100%; max-width: 588px; height: auto; border-radius: 12px; border: 1px solid var(--line); }
-.shot figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
-
-ol.steps { padding-left: 1.3em; }
-ol.steps li { margin: 8px 0; }
-
-.errors { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.errors th, .errors td { text-align: left; vertical-align: top; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.errors tr:last-child td { border-bottom: 0; }
-.errors th { font-size: 14px; color: var(--muted); font-weight: 600; }
-.errors td:first-child { width: 42%; font-weight: 600; }
-.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; background: var(--code-bg); padding: 1px 6px; border-radius: 6px; color: var(--warm); }
-
-.note { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warm); border-radius: 10px; padding: 14px 18px; }
-.note p { margin: 6px 0; }
-
-details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 18px; margin: 10px 0; }
-summary { cursor: pointer; font-weight: 600; }
-details p { margin: 10px 0 4px; color: var(--muted); }
-
-footer { border-top: 1px solid var(--line); padding: 28px 0 48px; font-size: 14px; color: var(--muted); }
-footer p { margin: 6px 0; }
-
-@media (max-width: 640px) {
-  body { font-size: 16px; }
-  nav a.hide-sm { display: none; }
-  .hero { grid-template-columns: 1fr; padding-top: 36px; }
-  .hero .icon { order: -1; width: 96px; height: 96px; }
-  .hero h1 { font-size: 34px; }
-  .errors thead { display: none; }
-  .errors, .errors tbody, .errors tr, .errors td { display: block; width: 100%; }
-  .errors td:first-child { width: 100%; border-bottom: 0; padding: 12px 14px 2px; }
-  .errors td:last-child { padding: 2px 14px 12px; color: var(--muted); }
-  .errors tr { border-bottom: 1px solid var(--line); }
-  .errors tr:last-child { border-bottom: 0; }
-}
-</style>
 </head>
 <body>
 
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="./"><img src="icon-192.png" alt="" width="30" height="30">MCD2 Crossover</a>
-    <nav>
-      <a href="#install">Install</a>
-      <a href="#errors" class="hide-sm">Errors fixed</a>
-      <a href="#faq" class="hide-sm">FAQ</a>
-      <a href="https://github.com/Wanzho/mcd2-crossover">GitHub</a>
-    </nav>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- Local nav -->
+<nav class="localnav" id="localnav" aria-label="MCD2 Crossover">
+  <div class="ln-inner">
+    <a class="ln-brand" href="#top" aria-label="MCD2 Crossover, back to top">
+      <img src="favicon.png" alt="" width="26" height="26">
+      <span>MCD2 Crossover</span>
+    </a>
+    <div class="ln-menu" id="ln-menu">
+      <ul class="ln-links">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#try">Try it</a></li>
+        <li><a href="#fixes">Fixes</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#specs">Specs</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </div>
+    <button class="ln-toggle" type="button" aria-expanded="false" aria-controls="ln-menu" aria-label="Show sections">
+      <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path d="M3.5 6.75 9 12.25l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <a class="ln-cta" data-dl href="https://github.com/Wanzho/mcd2-crossover/releases/download/v0.1.3/MCD2-Crossover-0.1.3-arm64.dmg">Download</a>
   </div>
-</header>
+</nav>
 
-<main class="wrap">
+<main id="main">
 
-  <div class="hero">
-    <div>
-      <h1>Play Minecraft Dungeons II on your Mac</h1>
-      <p class="lead">A free fix for running <strong>Minecraft Dungeons II</strong> (Minecraft Dungeons 2) through CrossOver on Apple Silicon. It gets the Steam version past the missing Visual C++ and Game Runtime prompts and the sign-in errors <strong>0060, 0063, 0064 and 0020</strong>.</p>
-      <div class="buttons">
-        <a class="btn primary" href="https://github.com/Wanzho/mcd2-crossover/releases/latest">Download for Mac</a>
-        <a class="btn secondary" href="https://github.com/Wanzho/mcd2-crossover">Source on GitHub</a>
+  <!-- 1 · Hero: the words first, then the portal -->
+  <section class="hero" id="overview" aria-labelledby="hero-title" data-section>
+    <div class="hero-intro" id="top">
+      <div class="hero-atmos" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="hero-eyebrow"><img src="favicon.png" alt="" width="28" height="28">MCD2 Crossover <span>for Minecraft Dungeons&nbsp;II</span></p>
+        <h1 id="hero-title">Dungeons&nbsp;II. <span class="nowrap">Now on your Mac.</span></h1>
+        <p class="hero-sub"><span class="hero-sub-lead">Set up once. Sign in. Play.</span><br>Start&#8209;up and Xbox sign&#8209;in fixes for the Steam version in&nbsp;CrossOver.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" data-dl href="https://github.com/Wanzho/mcd2-crossover/releases/download/v0.1.3/MCD2-Crossover-0.1.3-arm64.dmg">Download for Mac</a>
+          <a class="link-chev" href="#try">See how it works</a>
+        </div>
+        <p class="hero-fine">Free · Open source · Apple silicon · <span data-version>Version 0.1.3</span></p>
       </div>
-      <p class="fine">Version 0.1.0 · 47 MB DMG · Apple Silicon · Steam version · Free and open source (MIT)</p>
     </div>
-    <img class="icon" src="icon-192.png" alt="MCD2 Crossover app icon" width="168" height="168">
-  </div>
 
-  <figure class="shot">
-    <img src="setup-window.png" alt="MCD2 Crossover setup window with the Steam bottle selected" width="588" height="504">
-    <figcaption>Setup: pick your Steam bottle, accept Microsoft's license, click Set Up.</figcaption>
-  </figure>
+    <div class="show" id="show">
+      <div class="show-pin">
+        <h2 class="show-title reveal">Errors in. <span class="grad-text">Adventure&nbsp;out.</span></h2>
+        <div class="show-stage">
+          <div class="portal" aria-hidden="true">
+            <i class="pt-glow"></i>
+            <i class="pt-floor"></i>
+            <div class="pt-void"><i class="pt-shine"></i><i class="pt-motes"></i></div>
+            <i class="pt-stone s-l1"></i><i class="pt-stone s-l2"></i><i class="pt-stone s-l3"></i><i class="pt-stone s-l4"></i>
+            <i class="pt-stone s-r1"></i><i class="pt-stone s-r2"></i><i class="pt-stone s-r3"></i><i class="pt-stone s-r4"></i>
+            <i class="pt-stone s-t1"></i><i class="pt-stone s-t2"></i><i class="pt-stone s-key"></i><i class="pt-stone s-t3"></i><i class="pt-stone s-t4"></i>
+            <i class="pt-flash"></i>
+            <div class="pt-burst"></div>
+          </div>
+          <button class="err" type="button" data-err="0" style="--d:0s"><span class="err-in"><i class="err-ic warn"></i><span class="err-t">The following items are needed to&nbsp;run</span><span class="err-s">Visual C++ 2015–2022</span></span></button>
+          <button class="err" type="button" data-err="1" style="--d:-1.3s"><span class="err-in"><i class="err-ic warn"></i><span class="err-t">Game Runtime is not installed</span><span class="err-s">Microsoft Game Runtime</span></span></button>
+          <button class="err" type="button" data-err="2" style="--d:-2.4s"><span class="err-in"><i class="err-ic"></i><span class="err-t">Verification failed</span><span class="err-c">0060</span></span></button>
+          <button class="err" type="button" data-err="3" style="--d:-.7s"><span class="err-in"><i class="err-ic"></i><span class="err-t">Log in failed</span><span class="err-c">0063</span></span></button>
+          <button class="err" type="button" data-err="4" style="--d:-3.1s"><span class="err-in"><i class="err-ic"></i><span class="err-t">Log in failed</span><span class="err-c">0064</span></span></button>
+          <button class="err" type="button" data-err="5" style="--d:-1.9s"><span class="err-in"><i class="err-ic"></i><span class="err-t">Account linking failed</span><span class="err-c">0020</span></span></button>
+          <button class="pt-play" type="button" tabindex="-1"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8Z" fill="currentColor"/></svg>Play</button>
+          <p class="pt-toast" role="status"></p>
+        </div>
+        <ol class="fixed-row" aria-label="Fixed so far">
+          <li data-fix="0">Visual C++</li>
+          <li data-fix="1">Game Runtime</li>
+          <li data-fix="2">0060</li>
+          <li data-fix="3">0063</li>
+          <li data-fix="4">0064</li>
+          <li data-fix="5">0020</li>
+        </ol>
+        <p class="show-prompt"><span class="sp-wait"><b>Your turn.</b> <span class="sp-click">Click the rest.</span><span class="sp-tap">Tap the rest.</span></span><span class="sp-done"><b>All fixed.</b> Now press&nbsp;Play.</span><span class="sp-end"><b>That’s the whole idea.</b> <button class="sp-again" type="button">Again</button></span></p>
+      </div>
+    </div>
+  </section>
 
-  <section id="install">
-    <h2>What you need</h2>
-    <ul>
-      <li>An Apple Silicon Mac</li>
-      <li>CrossOver, with Windows Steam installed in a bottle</li>
-      <li>Minecraft Dungeons II bought and installed through that Steam</li>
-      <li>A Microsoft account</li>
+  <!-- 2 · Statement -->
+  <section class="statement" aria-label="What MCD2 Crossover does">
+    <div class="container">
+      <p class="statement-text" data-words>In CrossOver, Minecraft Dungeons&nbsp;II stops before the title screen: a Visual&nbsp;C++ prompt, a missing Game Runtime, then sign&#8209;in errors 0060 and 0063. <span class="em">MCD2 Crossover fixes each one, once,</span> and then gets out of the way.</p>
+      <p class="statement-foot reveal">Your Steam copy, your saves, your Microsoft account. The game’s ownership checks still&nbsp;run.</p>
+    </div>
+  </section>
+
+  <!-- 3 · Try it -->
+  <section class="try" id="try" aria-labelledby="try-title" data-section>
+    <div class="container section-head">
+      <p class="eyebrow reveal">Try it</p>
+      <h2 class="headline reveal" id="try-title">Set up once. Then just&nbsp;play.</h2>
+      <p class="lede reveal">Pick your bottle, click <strong>Set Up</strong>, sign in with a code. That’s the whole app, and you can click through it&nbsp;here.</p>
+    </div>
+    <div class="demo-wrap">
+      <div class="demo-frame">
+        <div id="app-demo"></div>
+        <noscript><p class="noscript-note">The interactive app needs JavaScript. The steps are under <a href="#install">Install</a>.</p></noscript>
+      </div>
+      <p class="demo-note">A replica of the app made for this page. Nothing is installed and nobody signs&nbsp;in.</p>
+    </div>
+  </section>
+
+  <!-- 4 · Fixes -->
+  <section class="fixes" id="fixes" aria-labelledby="fixes-title" data-section>
+    <div class="container section-head">
+      <p class="eyebrow reveal">Errors fixed</p>
+      <h2 class="headline reveal" id="fixes-title">Every error, explained.</h2>
+      <p class="lede reveal">The exact messages, why each one happens under CrossOver, and what setup does about it. <span class="hover-only">Point at one</span><span class="touch-only">Tap one</span> to&nbsp;see.</p>
+    </div>
+    <ul class="fix-grid container-wide">
+      <li class="fix fix-code">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Sign&#8209;in</span><span class="fix-num">0060</span><span class="fix-msg">Verification failed</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> CrossOver tells the game it’s offline, so it looks for saved proof that you own it, and finds&nbsp;none.</span><span class="fix-how"><b>Fix.</b> Setup checks your real connection and supplies a working Xbox sign&#8209;in, so the game carries on&nbsp;online.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-code">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Sign&#8209;in</span><span class="fix-num">0063</span><span class="fix-msg">Log in failed</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The game’s Steam login to Microsoft’s PlayFab servers goes out with two conflicting size headers, and the server turns it&nbsp;away.</span><span class="fix-how"><b>Fix.</b> The request goes out with its real body&nbsp;size.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-code">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Sign&#8209;in</span><span class="fix-num">0064</span><span class="fix-msg">Log in failed</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The same header clash, on the PlayFab and Minecraft requests that come&nbsp;next.</span><span class="fix-how"><b>Fix.</b> The same correction covers them&nbsp;too.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-code">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Sign&#8209;in</span><span class="fix-num">0020</span><span class="fix-msg">Microsoft account linking failed</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> A sign&#8209;in function the game calls doesn’t exist under CrossOver.</span><span class="fix-how"><b>Fix.</b> It now returns the Xbox account you signed in with. A different account is still&nbsp;rejected.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-prompt">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Start&#8209;up</span><span class="fix-msg">“The following items are needed to run”: Visual&nbsp;C++ 2015–2022</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The game’s launcher checks for Windows prerequisites, and its bundled Visual&nbsp;C++ won’t install over a newer&nbsp;one.</span><span class="fix-how"><b>Fix.</b> Setup checks for real Visual&nbsp;C++, opens Microsoft’s installer if it’s missing, and has Steam start the game&nbsp;itself.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-prompt">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Start&#8209;up</span><span class="fix-msg">Missing Gaming Services prompt</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> Gaming Services is a Windows Store service. It can’t install in CrossOver, so the prompt never&nbsp;succeeds.</span><span class="fix-how"><b>Fix.</b> Steam starts the game directly, past the prerequisite&nbsp;check.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-prompt">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Start&#8209;up</span><span class="fix-msg">Visual&nbsp;C++ Repair keeps opening</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> CrossOver can register Visual&nbsp;C++ while supplying Wine’s stand&#8209;in files, and a stricter check misread real&nbsp;installs.</span><span class="fix-how"><b>Fix.</b> Setup tells Microsoft’s files from Wine’s stand&#8209;ins, so Repair stops coming&nbsp;back.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-prompt">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Start&#8209;up</span><span class="fix-msg">“Game Runtime is not installed”</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The Xbox runtime the game expects is part of Windows, not&nbsp;CrossOver.</span><span class="fix-how"><b>Fix.</b> Setup downloads Microsoft’s portable runtime, checks it, and puts it next to the&nbsp;game.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-crash">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Crash</span><span class="fix-msg">Crash during network start&#8209;up</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The game’s networking library doesn’t run under&nbsp;CrossOver.</span><span class="fix-how"><b>Fix.</b> Setup uses curl’s official Windows library and certificate&nbsp;bundle.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-crash">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Crash</span><span class="fix-msg">Xbox “task queue missing”</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The runtime starts without the async support the game&nbsp;expects.</span><span class="fix-how"><b>Fix.</b> It starts with the game’s own configuration and Microsoft’s async&nbsp;support.</span></span>
+        </button>
+      </li>
+      <li class="fix fix-crash">
+        <button class="fix-btn" type="button" aria-expanded="false">
+          <span class="fix-front"><span class="fix-kind">Crash</span><span class="fix-msg">Unreal crash during HTTPS&nbsp;setup</span></span>
+          <span class="fix-back"><span class="fix-why"><b>Why.</b> The game hands an OpenSSL&#8209;only hook to a library that can’t take&nbsp;it.</span><span class="fix-how"><b>Fix.</b> That hook is declined. Certificate checks stay&nbsp;on.</span></span>
+        </button>
+      </li>
     </ul>
+    <p class="section-fine container">Not fixed yet: the occasional stall on the Warden screen. <a class="link-chev" href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/FIXES.md">Every fix in detail</a></p>
+  </section>
 
-    <h2>Install</h2>
-    <ol class="steps">
-      <li>Download <span class="code">MCD2-Crossover-0.1.0-arm64.dmg</span> from the <a href="https://github.com/Wanzho/mcd2-crossover/releases/latest">download page</a>.</li>
-      <li>Open it and drag <strong>MCD2 Crossover</strong> into Applications.</li>
-      <li>Quit the game, open MCD2 Crossover, choose your Steam bottle and click <strong>Set Up</strong>. Setup restarts Steam. If Visual C++ is missing, finish the Microsoft installer that opens.</li>
-      <li>Click <strong>Play</strong>. If a Microsoft code window appears, sign in on Microsoft's website with that code and leave the small window open until it closes by itself.</li>
-    </ol>
-    <p>No Terminal needed. Setup backs up every file it replaces and doesn't touch your saves or controller mods.</p>
-    <p>After the first sign-in you can start the game straight from Steam. Sign-in renews in the background. Open the app again to sign out, switch accounts or move to another bottle.</p>
+  <!-- 5 · Highlights -->
+  <section class="highlights" id="highlights" aria-labelledby="hl-title">
+      <div class="hl-head container-wide">
+        <h2 class="headline reveal" id="hl-title">Get the highlights.</h2>
+      </div>
+      <div class="hl-viewport" tabindex="0" role="region" aria-label="Highlights">
+        <ul class="hl-track" id="hl-track">
 
-    <div class="note">
-      <p><strong>macOS says the app can't be opened?</strong> It isn't notarized by Apple. Go to <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>. Keep Gatekeeper turned on.</p>
+          <li class="hl-card">
+            <div class="hl-art art-steam" aria-hidden="true">
+              <div class="st-lib">
+                <p class="st-row"><i></i><b></b></p>
+                <p class="st-row on"><i class="st-ico"></i><b>Minecraft Dungeons II</b></p>
+                <p class="st-row"><i></i><b></b></p>
+                <p class="st-row"><i></i><b></b></p>
+              </div>
+              <div class="st-hero">
+                <span class="st-play"><span class="sp-a"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M4.5 2.8v10.4L13 8Z" fill="currentColor"/></svg>PLAY</span><span class="sp-b">RUNNING</span></span>
+                <span class="st-note">MCD2 Crossover: closed</span>
+              </div>
+              <svg class="st-cursor" viewBox="0 0 24 24" width="26" height="26"><path d="M5 2.5 L 5 19.5 L 9.4 15.4 L 12.4 22 L 15.2 20.8 L 12.3 14.3 L 18.4 14.3 Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="hl-copy">
+              <h3>Play straight from Steam.</h3>
+              <p>After setup and your first sign&#8209;in, start the game from Steam like any other. The app doesn’t need to stay&nbsp;open.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-code" aria-hidden="true">
+              <div class="cd-win">
+                <p class="cd-bar"><i></i><i></i><i></i><span>Xbox Sign&#8209;In</span></p>
+                <p class="cd-line">Sign in using your browser or phone:</p>
+                <p class="cd-row"><span class="cd-field">microsoft.com/link</span><span class="cd-btn">Copy link</span></p>
+                <p class="cd-row"><span class="cd-field cd-code">QX7K‑M2RD</span><span class="cd-btn cd-copy"><b class="c1">Copy code</b><b class="c2">Code copied</b></span></p>
+              </div>
+              <div class="cd-phone"><i class="cd-notch"></i><span class="cd-boxes"><b>Q</b><b>X</b><b>7</b><b>K</b><b>M</b><b>2</b><b>R</b><b>D</b></span><span class="cd-ok"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5 6.6 11.4 12.6 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Signed in</span></div>
+            </div>
+            <div class="hl-copy">
+              <h3>Sign in with a code.</h3>
+              <p>Your password never goes into the app. You sign in on Microsoft’s own site with a one&#8209;time&nbsp;code.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-renew" aria-hidden="true">
+              <div class="rn-ring"><i class="rn-track"></i><i class="rn-sweep"></i>
+                <svg class="rn-lock" viewBox="0 0 32 32" width="52" height="52"><rect x="7" y="14" width="18" height="13" rx="3.2" fill="currentColor"/><path d="M11 14v-3.4a5 5 0 0 1 10 0V14" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>
+              </div>
+              <span class="rn-tag"><svg viewBox="0 0 16 16" width="13" height="13"><path d="M3.5 8.5 6.6 11.4 12.6 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Renewed</span>
+              <span class="rn-key">Keychain</span>
+            </div>
+            <div class="hl-copy">
+              <h3>Stays signed in.</h3>
+              <p>Sign&#8209;in renews by itself in the background. The token lives in your Mac’s Keychain, and Sign Out deletes&nbsp;it.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-backup" aria-hidden="true">
+              <div class="bk-list">
+                <p class="bk-row r1"><i class="ico"></i><span>xgameruntime.dll</span><i class="bk-copy"></i></p>
+                <p class="bk-row r2"><i class="ico"></i><span>XCurl.dll</span><i class="bk-copy"></i></p>
+                <p class="bk-row r3"><i class="ico"></i><span>Steam launch option</span><i class="bk-copy"></i></p>
+              </div>
+              <div class="bk-folder"><i></i><span>Backup</span><b class="bk-n">3 files</b></div>
+              <p class="bk-safe"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1.6 2.8 3.6v4c0 3.2 2.2 5.6 5.2 6.8 3-1.2 5.2-3.6 5.2-6.8v-4Z" fill="currentColor"/></svg>Saves and mods untouched</p>
+            </div>
+            <div class="hl-copy">
+              <h3>Nothing lost.</h3>
+              <p>Setup backs up every file it replaces. Your saves, Wine overrides and controller mods stay as they&nbsp;are.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-bottles" aria-hidden="true">
+              <div class="bt-sheet">
+                <p class="bt-title">Change Game Copy</p>
+                <ul class="bt-list"><li>Steam</li><li>Games</li><li>Test</li></ul>
+                <i class="bt-sel"></i>
+                <p class="bt-acct">Signed in to: BlockyRogue</p>
+              </div>
+            </div>
+            <div class="hl-copy">
+              <h3>Any bottle. Any copy.</h3>
+              <p>Move the game to another CrossOver bottle and pick it in Change Game Copy. Your Microsoft sign&#8209;in comes&nbsp;along.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-logs" aria-hidden="true">
+              <div class="lg-panel">
+                <span class="lg-rec"><i></i><b class="lg-a">Start Recording</b><b class="lg-b">Recording</b></span>
+                <span class="lg-time">59:5<b>9</b></span>
+              </div>
+              <div class="lg-zip"><i class="lg-file"><b>ZIP</b></i><span>mcd2-logs.zip</span></div>
+              <p class="lg-never"><svg viewBox="0 0 16 16" width="13" height="13"><path d="M3.5 8.5 6.6 11.4 12.6 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Stays on your Mac</p>
+            </div>
+            <div class="hl-copy">
+              <h3>Troubleshooting, built&nbsp;in.</h3>
+              <p>Record a problem and save a ZIP for a bug report. Off by default, stops after an hour, never uploads&nbsp;anything.</p>
+            </div>
+          </li>
+
+          <li class="hl-card">
+            <div class="hl-art art-lang" aria-hidden="true">
+              <div class="al-window">
+                <ul class="al-list">
+                  <li>English</li><li>Français</li><li>Italiano</li><li>Deutsch</li><li>Español (España)</li><li>Nederlands</li><li>日本語</li><li>한국어</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>Русский</li><li>Español (Latinoamérica)</li><li>Svenska</li><li>简体中文</li><li>繁體中文</li><li>Türkçe</li><li>Українська</li>
+                  <li>English</li><li>Français</li><li>Italiano</li><li>Deutsch</li><li>Español (España)</li><li>Nederlands</li><li>日本語</li><li>한국어</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>Русский</li><li>Español (Latinoamérica)</li><li>Svenska</li><li>简体中文</li><li>繁體中文</li><li>Türkçe</li><li>Українська</li>
+                </ul>
+              </div>
+              <p class="al-count"><b>18</b> languages</p>
+            </div>
+            <div class="hl-copy">
+              <h3>18 languages.</h3>
+              <p>The app and the sign&#8209;in window speak every language Dungeons&nbsp;II lists on Steam, plus European&nbsp;Portuguese.</p>
+            </div>
+          </li>
+
+        </ul>
+      </div>
+      <div class="hl-controls container-wide">
+        <div class="hl-dots" role="group" aria-label="Go to a highlight"></div>
+        <div class="hl-arrows">
+          <button class="hl-arrow" type="button" data-dir="-1" aria-controls="hl-track" aria-label="Previous highlights"><svg viewBox="0 0 36 36" width="36" height="36" aria-hidden="true"><path d="M20.5 11.5 14 18l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="hl-arrow" type="button" data-dir="1" aria-controls="hl-track" aria-label="Next highlights"><svg viewBox="0 0 36 36" width="36" height="36" aria-hidden="true"><path d="M15.5 11.5 22 18l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+  </section>
+
+  <!-- 6 · Install -->
+  <section class="install" id="install" aria-labelledby="install-title" data-section>
+    <div class="container section-head">
+      <p class="eyebrow reveal">Install</p>
+      <h2 class="headline reveal" id="install-title">Five minutes to the title&nbsp;screen.</h2>
+    </div>
+
+    <div class="needs container-wide reveal">
+      <p class="needs-title">You’ll need</p>
+      <ul class="needs-list">
+        <li><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect x="4" y="6.5" width="24" height="15.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1.8 25.2h28.4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span><b>An Apple silicon Mac</b>macOS&nbsp;13 or later</span></li>
+        <li><img class="needs-app" src="crossover-icon.png" alt="" width="34" height="34" loading="lazy" decoding="async"><span><b>CrossOver</b>tested with 26.3</span></li>
+        <li><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M5 25.5V11.8L16 5l11 6.8v13.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 25.5v-8h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span><b>Windows Steam in a bottle</b>with Dungeons&nbsp;II installed, signed in once</span></li>
+        <li><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="11.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 27c1.4-5.2 5.4-8 10.5-8s9.1 2.8 10.5 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span><b>A Microsoft account</b>the one you play with</span></li>
+      </ul>
+    </div>
+
+    <div class="panels container-wide">
+      <div class="panel" id="panel-mac">
+        <div class="panel-copy">
+          <div class="panel-dl">
+            <a class="btn btn-primary" data-dl href="https://github.com/Wanzho/mcd2-crossover/releases/download/v0.1.3/MCD2-Crossover-0.1.3-arm64.dmg"><span class="dl-long" data-dl-name>Download MCD2&#8209;Crossover&#8209;0.1.3&#8209;arm64.dmg</span><span class="dl-short">Download for Mac</span></a>
+            <span class="dl-meta"><span data-size>About 50&nbsp;MB</span> · Apple&nbsp;silicon · Steam version</span>
+          </div>
+          <ol class="steps">
+            <li><span class="n">1</span><div><h3>Drag it into Applications.</h3><p>Open the download and drag <strong>MCD2 Crossover</strong> across.</p></div></li>
+            <li><span class="n">2</span><div><h3>Open it.</h3><p>If macOS blocks it, use <strong>Open Anyway</strong> in System Settings, as on the right. The app isn’t notarized by Apple&nbsp;yet.<sup><a href="#fn1" aria-label="Footnote 1">1</a></sup></p></div></li>
+            <li><span class="n">3</span><div><h3>Quit the game. Click Set&nbsp;Up.</h3><p>Pick your Steam bottle and accept Microsoft’s license. Setup restarts Steam. If Visual&nbsp;C++ is missing, finish Microsoft’s installer when it&nbsp;opens.</p></div></li>
+            <li><span class="n">4</span><div><h3>Click Play. Sign in once.</h3><p>If a code window appears, sign in on Microsoft’s site with that code and leave the window open until it closes by itself. From then on, play from&nbsp;Steam.</p></div></li>
+          </ol>
+        </div>
+        <figure class="panel-shot gk-shot">
+          <div class="gk" aria-hidden="true">
+            <p class="gk-bar"><i></i><i></i><i></i><span>Privacy &amp; Security</span></p>
+            <div class="gk-body">
+              <p class="gk-head">Security</p>
+              <div class="gk-box">
+                <p class="gk-row"><span>Allow applications from</span><span class="gk-pop">App Store &amp; Known Developers</span></p>
+                <p class="gk-row gk-hit"><span>“MCD2 Crossover” was blocked to protect your&nbsp;Mac.</span><span class="gk-btn">Open Anyway</span></p>
+              </div>
+            </div>
+          </div>
+          <figcaption>System Settings → Privacy &amp; Security. Gatekeeper stays&nbsp;on.</figcaption>
+        </figure>
+      </div>
+    </div>
+    <p class="section-fine container">Every release and its checksum: <a class="link-chev" href="https://github.com/Wanzho/mcd2-crossover/releases">All versions on GitHub</a></p>
+  </section>
+
+  <!-- 7 · wasdmod -->
+  <section class="pair" aria-labelledby="pair-title">
+    <div class="pair-inner container-wide">
+      <div class="pair-art" aria-hidden="true">
+        <span class="pk pk-w">W</span><span class="pk pk-a">A</span><span class="pk pk-s">S</span><span class="pk pk-d">D</span>
+      </div>
+      <div class="pair-copy">
+        <p class="eyebrow reveal">Next</p>
+        <h2 class="headline reveal" id="pair-title">Then lose the click&#8209;to&#8209;move.</h2>
+        <p class="lede reveal"><strong>wasdmod</strong> plays Dungeons&nbsp;II with WASD, mouse and keyboard, as a controller. It installs into the same bottle, and MCD2 Crossover leaves it&nbsp;alone.</p>
+        <p class="pair-link reveal"><a class="link-chev" href="https://wanzho.github.io/wasd/">Meet wasdmod</a></p>
+      </div>
     </div>
   </section>
 
-  <section id="errors">
-    <h2>Errors it fixes</h2>
-    <table class="errors">
-      <thead><tr><th>What you see</th><th>Why it happens under CrossOver</th></tr></thead>
-      <tbody>
-        <tr><td>“The following items are needed to run”: Visual C++ 2015–2022 and Gaming Services</td><td>The game's launcher checks for Windows-only prerequisites, and its bundled Visual C++ installer refuses to run when a newer version is already there. Setup checks for real Visual C++ and has Steam start the game itself.</td></tr>
-        <tr><td>Game Runtime is not installed</td><td>The Xbox runtime the game needs isn't part of CrossOver. Setup adds Microsoft's portable runtime next to the game.</td></tr>
-        <tr><td>Verification failed <span class="code">0060</span></td><td>CrossOver tells the game it's offline, so it looks for saved proof of ownership and finds none. The fix reports your real connection and provides a working Xbox sign-in.</td></tr>
-        <tr><td>Log in failed <span class="code">0063</span></td><td>The Steam login request to Microsoft's servers was sent with conflicting size headers and rejected.</td></tr>
-        <tr><td>Log in failed <span class="code">0064</span></td><td>The same header problem on the next login requests.</td></tr>
-        <tr><td>Microsoft account linking failed <span class="code">0020</span></td><td>A sign-in function the game calls was missing. It now returns the account you signed in with.</td></tr>
-        <tr><td>Crashes at startup or during HTTPS setup, “task queue missing”</td><td>Networking and runtime pieces that don't work under CrossOver are replaced with compatible ones. Certificate checks stay on.</td></tr>
-      </tbody>
-    </table>
-    <p>Details for each fix: <a href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/FIXES.md">startup and sign-in fixes</a>.</p>
+  <!-- 8 · Numbers -->
+  <section class="numbers" aria-label="MCD2 Crossover in numbers">
+    <ul class="num-grid container-wide">
+      <li class="num"><b class="num-big" data-roll="11">11</b><span>start&#8209;up and sign&#8209;in problems fixed</span></li>
+      <li class="num"><b class="num-big" data-roll="0">0</b><span>passwords the app ever sees</span></li>
+      <li class="num"><b class="num-big" data-roll="18">18</b><span>languages</span></li>
+      <li class="num"><b class="num-big" data-roll="1">1</b><span>setup, then play from Steam</span></li>
+      <li class="num"><b class="num-big num-free">Free</b><span>and open source</span></li>
+    </ul>
   </section>
 
-  <section id="faq">
-    <h2>FAQ</h2>
-    <details>
-      <summary>Do I need to own the game?</summary>
-      <p>Yes. It works with your own Steam copy and your own Microsoft account. The game's Steam and Xbox ownership checks still run.</p>
-    </details>
-    <details>
-      <summary>Does it see my Microsoft password?</summary>
-      <p>No. You sign in on Microsoft's website with a one-time code. The app keeps only the renewal token, in macOS Keychain, and Sign Out deletes it.</p>
-    </details>
-    <details>
-      <summary>Could Microsoft block it?</summary>
-      <p>Possibly. Sign-in uses the game's own Microsoft app ID rather than one registered for this tool, so Microsoft could shut that route. Use it at your own risk.</p>
-    </details>
-    <details>
-      <summary>Does it work on Intel Macs, or with the Xbox app or Game Pass version?</summary>
-      <p>No. Apple Silicon and the Steam version only.</p>
-    </details>
-    <details>
-      <summary>What has been tested?</summary>
-      <p>An M5 Pro with CrossOver 26.3: setup, getting into the game, setup in a second bottle and launching straight from Steam. Long sessions, multiplayer, other Macs and installing Visual C++ where it's missing haven't been tested yet. The intermittent stall on the Warden screen has no confirmed fix.</p>
-    </details>
-    <details>
-      <summary>Something still fails. Where do I report it?</summary>
-      <p><a href="https://github.com/Wanzho/mcd2-crossover/issues/new/choose">Open an issue on GitHub</a> with the exact error, your Mac, and your macOS and CrossOver versions.</p>
-    </details>
+  <!-- 9 · Specs -->
+  <section class="specs" id="specs" aria-labelledby="specs-title" data-section>
+    <div class="container">
+      <h2 class="headline reveal" id="specs-title">Tech specs</h2>
+      <dl class="spec-table">
+        <div class="spec-row reveal">
+          <dt>Mac</dt>
+          <dd><p>Apple silicon · macOS&nbsp;13 or later</p><p class="sub">Tested on an M5 Pro. Intel Macs aren’t supported.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>CrossOver</dt>
+          <dd><p>Tested with CrossOver&nbsp;26.3</p><p class="sub">Windows Steam in a bottle, with Minecraft Dungeons&nbsp;II installed. Works across several bottles.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Game</dt>
+          <dd><p>Minecraft Dungeons&nbsp;II, Steam version</p><p class="sub">Minecraft Launcher copies: experimental and untested. Game Pass and the Xbox app aren’t supported.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Sign&#8209;in</dt>
+          <dd><p>Your Microsoft account, with a one&#8209;time code</p><p class="sub">You sign in on Microsoft’s site. Renews in the background; the token is kept in macOS Keychain.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Download</dt>
+          <dd><p><span data-dmg>MCD2&#8209;Crossover&#8209;0.1.3&#8209;arm64.dmg</span></p><p class="sub"><span data-size>About 50&nbsp;MB</span> · not notarized by Apple yet<sup><a href="#fn1" aria-label="Footnote 1">1</a></sup> · no Microsoft or game files inside: setup downloads Microsoft’s from Microsoft and checks&nbsp;them.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Languages</dt>
+          <dd><p>18</p><p class="sub">English, Français, Italiano, Deutsch, Español (España), Nederlands, 日本語, 한국어, Polski, Português (Brasil), Português (Portugal), Русский, Español (Latinoamérica), Svenska, 简体中文, 繁體中文, Türkçe, Українська</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Price &amp; licence</dt>
+          <dd><p>Free · MIT licence</p><p class="sub">Source code on <a href="https://github.com/Wanzho/mcd2-crossover">GitHub</a>.</p></dd>
+        </div>
+        <div class="spec-row reveal">
+          <dt>Privacy</dt>
+          <dd><p>Collects nothing</p><p class="sub">No accounts of its own, analytics or tracking. It talks to Microsoft and Xbox to sign you in, and to download sources during setup. <a href="privacy.html">Privacy policy</a></p></dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 10 · FAQ -->
+  <section class="faq" id="faq" aria-labelledby="faq-title" data-section>
+    <div class="container">
+      <h2 class="headline reveal" id="faq-title">Questions? Answers.</h2>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary><span>Do I need to own the game?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Yes. It works with your own Steam copy and your own Microsoft account, and the game’s Steam and Xbox ownership checks still run. It doesn’t unlock anything.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>Does it see my Microsoft password?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>No. You sign in on Microsoft’s website with a one&#8209;time code. The app keeps only the renewal token, in macOS Keychain, and <strong>Sign Out</strong> deletes it.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>Could Microsoft block it?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Possibly. Sign&#8209;in uses the game’s own Microsoft app ID rather than one registered for this tool, so Microsoft could close that route. Use it at your own risk.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>What does it change in the game?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>It puts Microsoft’s portable Xbox runtime and two compatibility files next to the game, and sets Steam’s launch option for Dungeons&nbsp;II so it starts the game directly. Every file it replaces is backed up. The game’s executable, your saves and your Wine overrides aren’t touched.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>The prompts came back after an update. Now what?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Verifying or reinstalling the game can put its original files back. Open MCD2 Crossover and choose <strong>Repair Setup…</strong> from its menu.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>Intel Macs, Game Pass, Minecraft Launcher?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Apple silicon only. The Steam version is the supported one. Minecraft Launcher copies are an experimental, untested option that needs a copy you own there; a Steam purchase doesn’t unlock it. Game Pass and the Xbox app aren’t supported.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>Does it work with wasdmod?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Yes. Setup leaves wasdmod’s file and its CrossOver setting alone, and both run in the same bottle. <a href="https://wanzho.github.io/wasd/">wasdmod</a> adds WASD, mouse and keyboard controls.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>What has been tested?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>An M5 Pro with CrossOver&nbsp;26.3: setup, getting into the game, setup in a second bottle, and launching straight from Steam with the app closed. Long sessions, multiplayer, other Macs and installing Visual&nbsp;C++ where it’s missing haven’t been tested yet.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>How do I sign out or undo it?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Quit the game, open the app and click <strong>Sign Out</strong>: that removes the saved credential and session. To undo the repair itself, restore the backed&#8209;up files as described in the <a href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/TECHNICAL.md#undo-the-repair">technical notes</a>.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary><span>Something still fails. Where do I report it?</span><i class="pm" aria-hidden="true"></i></summary>
+          <div class="faq-a"><p>Click <strong>Troubleshooting…</strong> in the app, <strong>Start Recording</strong>, reproduce the problem, then <strong>Save Logs…</strong> and attach the ZIP to <a href="https://github.com/Wanzho/mcd2-crossover/issues/new/choose">an issue on GitHub</a>, with your Mac and your macOS and CrossOver versions. Passwords, tokens and saves are never in the ZIP.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · Final call to action -->
+  <section class="final" aria-labelledby="final-title">
+    <div class="final-inner container">
+      <div class="final-icon reveal"><img src="icon-352.webp" alt="" width="176" height="176" loading="lazy" decoding="async"></div>
+      <h2 class="final-title reveal" id="final-title">MCD2 Crossover</h2>
+      <p class="final-sub reveal">Free for Apple silicon&nbsp;Macs.</p>
+      <div class="cta-row reveal">
+        <a class="btn btn-primary" data-dl href="https://github.com/Wanzho/mcd2-crossover/releases/download/v0.1.3/MCD2-Crossover-0.1.3-arm64.dmg">Download for Mac</a>
+        <a class="link-chev" href="https://github.com/Wanzho/mcd2-crossover">Source on GitHub</a>
+      </div>
+      <p class="final-fine reveal"><span data-version>Version 0.1.3</span> · <a href="https://github.com/Wanzho/mcd2-crossover/releases">All versions</a></p>
+    </div>
   </section>
 
 </main>
 
-<footer>
-  <div class="wrap">
-    <p><a href="https://github.com/Wanzho/mcd2-crossover">GitHub</a> · <a href="https://github.com/Wanzho/mcd2-crossover/releases/latest">Download</a> · <a href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/TECHNICAL.md">Technical notes</a> · <a href="https://github.com/Wanzho/mcd2-crossover/issues">Issues</a></p>
-    <p>Unofficial project. Not affiliated with Mojang, Microsoft or CodeWeavers. Minecraft is a trademark of Mojang Synergies AB.</p>
+<footer class="footer">
+  <div class="container">
+    <ol class="footnotes">
+      <li id="fn1">The app isn’t notarized by Apple yet, so macOS asks you to confirm the first time you open it. Keep Gatekeeper turned on.</li>
+    </ol>
+    <nav class="footer-links" aria-label="Links">
+      <a href="https://github.com/Wanzho/mcd2-crossover">GitHub</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/releases/latest">Download</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/FIXES.md">Fixes</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/blob/main/docs/TECHNICAL.md">Technical notes</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/issues">Issues</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://wanzho.github.io/wasd/">wasdmod</a>
+    </nav>
+    <p class="legal">Unofficial fan project. Not affiliated with Mojang, Microsoft, Valve or CodeWeavers. Minecraft is a trademark of Mojang Synergies&nbsp;AB; CrossOver is a trademark of CodeWeavers.</p>
+    <p class="legal">MCD2 Crossover is open source under the MIT licence. Pixel lettering: “Mojang” by b.tenthousand&nbsp;(CC0).</p>
   </div>
 </footer>
 

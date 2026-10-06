@@ -1,0 +1,735 @@
+/* MCD2 Crossover "Try it" demo (app-demo.js builds the markup). Everything is scoped
+   under #app-demo and .mx- classes so nothing leaks into the page.
+   Two looks live here: the app itself in macOS dark mode (no site colours inside it),
+   and page-level parts in the site's portal cyan (guide, ring, checklist, cards). */
+#app-demo {
+  /* the app (macOS dark appearance) */
+  --mx-sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --mx-win: #1e1e1e;
+  --mx-sheet: #262626;
+  --mx-label: rgba(255, 255, 255, .85);
+  --mx-label-2: rgba(255, 255, 255, .55);
+  --mx-label-off: rgba(255, 255, 255, .26);
+  --mx-control: rgba(255, 255, 255, .085);
+  --mx-control-down: rgba(255, 255, 255, .17);
+  --mx-accent: #0a7cff;
+  --mx-focus: rgba(31, 147, 255, .55);
+  --mx-bar: 28px;
+  --mx-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13), 0 0 0 1px rgba(0, 0, 0, .85), 0 34px 80px -12px rgba(0, 0, 0, .8), 0 10px 28px rgba(0, 0, 0, .45);
+  /* the page */
+  --mx-font: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif);
+  --mx-text: #f5f5f7;
+  --mx-text-2: #a1a1a6;
+  --mx-surface: #101012;
+  --mx-hair: rgba(255, 255, 255, .1);
+  --mx-c1: #8af6ff;
+  --mx-c2: #2fd3ff;
+  --mx-c3: #2b8cff;
+  --mx-grad: linear-gradient(90deg, #8af6ff, #2fd3ff 35%, #2b8cff 70%, #7b6bff);
+  position: relative;
+  width: 100%;
+  color: var(--mx-text);
+  font-family: var(--mx-font);
+  letter-spacing: 0;
+  text-align: left;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app-demo *, #app-demo *::before, #app-demo *::after { box-sizing: border-box; }
+#app-demo [hidden] { display: none !important; }
+#app-demo p { margin: 0; }
+#app-demo .mx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout: guide on top, then the desk (windows) and the side cards.  */
+/* The ghost (an invisible copy of the tallest state) shares the grid */
+/* cell with the live layout, so the height never jumps.              */
+/* ------------------------------------------------------------------ */
+#app-demo .mx-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+#app-demo .mx-stage { display: grid; }
+#app-demo .mx-ghost, #app-demo .mx-live { grid-area: 1 / 1; min-width: 0; }
+#app-demo .mx-ghost, #app-demo .mx-ghost * { visibility: hidden !important; pointer-events: none; }
+#app-demo .mx-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 700px) minmax(240px, 1fr);
+  gap: 36px;
+  align-items: start;
+  align-content: start;   /* don't spread rows over the ghost's extra height */
+}
+#app-demo .mx-desk { position: relative; min-width: 0; }
+@media (max-width: 900px) {
+  #app-demo .mx-cols { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  #app-demo .mx-desk { max-width: 700px; width: 100%; margin: 0 auto; }
+  #app-demo .mx-side { max-width: 700px; width: 100%; margin: 0 auto; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Windows                                                            */
+/* ------------------------------------------------------------------ */
+#app-demo .mx-win {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  background: var(--mx-win);
+  color: var(--mx-label);
+  font: 400 13px/16px var(--mx-sys);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-shadow: var(--mx-shadow);
+  cursor: default;
+  outline: none;
+  container: mx-win / inline-size;
+}
+#app-demo .mx-main { z-index: 2; transform-origin: 50% 40%; }
+#app-demo .mx-main.is-closed { visibility: hidden; opacity: 0; }
+
+#app-demo .mx-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: var(--mx-bar);
+  padding: 0 10px;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .025);
+}
+#app-demo .mx-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--mx-label-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app-demo .mx-lights { display: flex; flex: none; gap: 9px; }
+#app-demo .mx-light {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .28);
+  color: rgba(70, 0, 0, .75);
+  cursor: default;
+}
+#app-demo .mx-l-min { background: #febc2e; color: rgba(110, 60, 0, .75); }
+#app-demo .mx-l-zoom { background: #28c840; color: rgba(0, 80, 0, .75); }
+#app-demo .mx-light svg { width: 8px; height: 8px; opacity: 0; }
+#app-demo .mx-lights:hover .mx-light:not(.is-off):not(:disabled) svg { opacity: 1; }
+#app-demo .mx-light.is-off, #app-demo .mx-light:disabled,
+#app-demo .is-inactive .mx-light {
+  background: #3d3d3d;
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .06);
+}
+#app-demo .is-inactive .mx-light svg { opacity: 0 !important; }
+#app-demo .is-inactive .mx-title { color: var(--mx-label-off); }
+
+/* Window content: an NSStackView, 28 pt sides, 24 pt top, 12 pt spacing */
+#app-demo .mx-content { min-width: 0; }
+#app-demo .mx-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 28px 30px;
+}
+#app-demo .mx-home { min-height: calc(480px - var(--mx-bar)); }
+#app-demo .mx-head { display: flex; align-items: center; gap: 16px; }
+#app-demo .mx-icon { flex: none; width: 64px; height: 64px; -webkit-user-drag: none; }
+#app-demo .mx-h {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 24px;
+  line-height: 29px;
+  font-weight: 600;
+  color: var(--mx-label);
+}
+#app-demo .mx-head .mx-small { flex: none; }
+#app-demo .mx-text { overflow-wrap: break-word; }
+#app-demo .mx-medium, #app-demo .mx-label { font-weight: 500; }
+#app-demo .mx-label { flex: none; white-space: nowrap; }
+#app-demo .mx-sel { overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; cursor: text; }
+#app-demo .mx-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#app-demo .mx-row-16 { gap: 16px; }
+#app-demo .mx-wrap { flex-wrap: wrap; row-gap: 8px; }
+#app-demo .mx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  min-height: 32px;
+}
+
+/* Push buttons (dark, flat, 6 pt corners), the blue default button, small buttons */
+#app-demo .mx-btn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--mx-control);
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .07), 0 .5px 1.5px rgba(0, 0, 0, .35);
+  color: var(--mx-label);
+  font: 400 13px/16px var(--mx-sys);
+  text-align: center;
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  --mx-r: 6px;
+}
+#app-demo .mx-btn:active:not(:disabled), #app-demo .mx-btn.is-pressed { background: var(--mx-control-down); }
+#app-demo .mx-default { background: var(--mx-accent); color: #fff; box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .18), 0 .5px 1.5px rgba(0, 0, 0, .35); }
+#app-demo .mx-default:active:not(:disabled), #app-demo .mx-default.is-pressed { background: #3a95ff; }
+#app-demo .is-inactive .mx-default:not(:disabled) { background: var(--mx-control); color: var(--mx-label); }
+#app-demo .mx-btn:disabled {
+  background: rgba(255, 255, 255, .045);
+  box-shadow: none;
+  color: var(--mx-label-off);
+}
+#app-demo .mx-w100 { min-width: 100px; }
+#app-demo .mx-w116 { min-width: 116px; }
+#app-demo .mx-w88 { min-width: 88px; }
+#app-demo .mx-small {
+  min-height: 19px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 14px;
+  --mx-r: 5px;
+}
+#app-demo .mx-btn:focus-visible, #app-demo .mx-checkbox:focus-visible {
+  box-shadow: 0 0 0 3.5px var(--mx-focus), inset 0 .5px 0 rgba(255, 255, 255, .07);
+}
+
+/* Popup buttons with the double chevron, sized to the longest item */
+#app-demo .mx-popup {
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 4px 7px 4px 9px;
+  text-align: left;
+}
+#app-demo .mx-pop-bottle { width: 260px; }
+#app-demo .mx-popup-face { display: grid; grid-template-columns: minmax(0, max-content); min-width: 0; }
+#app-demo .mx-popup-face > span {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  visibility: hidden;
+}
+#app-demo .mx-popup-face > .is-on { visibility: inherit; }
+#app-demo .mx-chev { flex: none; color: var(--mx-label); }
+#app-demo .mx-popup:disabled .mx-chev { color: var(--mx-label-off); }
+
+/* Checkbox: a real input, drawn like an NSButton checkbox */
+#app-demo .mx-check { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; }
+#app-demo .mx-boxwrap { position: relative; display: inline-flex; border-radius: 4.5px; --mx-r: 4.5px; }
+#app-demo .mx-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 0;
+  border-radius: 4.5px;
+  background: rgba(255, 255, 255, .1);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16), 0 .5px 1px rgba(0, 0, 0, .35);
+  outline: none;
+  cursor: default;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#app-demo .mx-checkbox:checked {
+  background: var(--mx-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.6 6.3 5 8.7l4.4-5.3' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+#app-demo .mx-checkbox:disabled { opacity: .45; }
+#app-demo .mx-check:has(.mx-checkbox:disabled) > span:last-child { color: var(--mx-label-off); }
+
+/* Indeterminate NSProgressIndicator (bar style) */
+#app-demo .mx-progress {
+  position: relative;
+  height: 6px;
+  margin: 5px 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .1);
+}
+#app-demo .mx-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: var(--mx-accent);
+  opacity: .55;
+}
+.motion #app-demo .mx-progress::before {
+  right: auto;
+  width: 34%;
+  opacity: 1;
+  background: linear-gradient(90deg, rgba(10, 124, 255, 0), var(--mx-accent) 30%, #5aa8ff 60%, rgba(10, 124, 255, 0));
+  animation: mx-indet 1.35s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+@keyframes mx-indet { from { left: -34%; } to { left: 100%; } }
+
+/* Close, reopen, the "no" shake and the finale glow */
+.motion #app-demo .mx-main.is-closing { animation: mx-out .23s cubic-bezier(.4, 0, 1, 1) both; }
+.motion #app-demo .mx-main.is-opening { animation: mx-out .3s cubic-bezier(.2, .8, .2, 1) reverse both; }
+@keyframes mx-out { to { opacity: 0; transform: scale(.94); } }
+.motion #app-demo .mx-main.is-wiggle { animation: mx-wiggle .42s ease-in-out; }
+@keyframes mx-wiggle {
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+#app-demo .mx-main.is-glow {
+  box-shadow: var(--mx-shadow), 0 0 0 1px rgba(47, 211, 255, .45), 0 0 46px 2px rgba(47, 211, 255, .2);
+}
+.motion #app-demo .mx-main.is-glow { animation: mx-glow 2.2s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes mx-glow {
+  0% { box-shadow: var(--mx-shadow), 0 0 0 1px rgba(138, 246, 255, 0), 0 0 0 0 rgba(47, 211, 255, 0); }
+  22% { box-shadow: var(--mx-shadow), 0 0 0 2px rgba(138, 246, 255, .95), 0 0 110px 24px rgba(47, 211, 255, .5); }
+  100% { box-shadow: var(--mx-shadow), 0 0 0 1px rgba(47, 211, 255, .45), 0 0 46px 2px rgba(47, 211, 255, .2); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Sheets: slide down from under the title bar. The holder clips only */
+/* its top edge, so a sheet can still cast its shadow past the window */
+/* ------------------------------------------------------------------ */
+#app-demo .mx-sheets {
+  position: absolute;
+  top: var(--mx-bar);
+  left: 0;
+  right: 0;
+  height: 0;
+  z-index: 5;
+  clip-path: inset(0 -400px -4000px -400px);
+}
+#app-demo .mx-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 auto;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--mx-sheet);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 0 1px rgba(0, 0, 0, .75), 0 22px 60px rgba(0, 0, 0, .6), 0 6px 18px rgba(0, 0, 0, .35);
+  outline: none;
+}
+.motion #app-demo .mx-sheet { transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+.motion #app-demo .mx-sheet.is-off { transform: translateY(calc(-100% - 24px)); transition-duration: .24s; transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
+#app-demo .mx-sheet-trouble { gap: 14px; padding: 20px 24px 22px; min-height: 200px; }
+#app-demo .mx-sheet-title { font-size: 17px; line-height: 22px; font-weight: 600; }
+#app-demo .mx-sheet-license { gap: 16px; padding: 20px 20px 16px; }
+#app-demo .mx-license {
+  height: 360px;
+  max-height: 52vh;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: var(--mx-win);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#app-demo .mx-license:focus-visible { box-shadow: 0 0 0 3.5px var(--mx-focus); }
+#app-demo .mx-license p + p { margin-top: 10px; }
+#app-demo .mx-license-h { font-weight: 600; }
+#app-demo .mx-rec.mx-link { color: #419cff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Popup menu (NSMenu, dark vibrancy) */
+#app-demo .mx-menu {
+  position: absolute;
+  z-index: 50;
+  padding: 5px;
+  border-radius: 10px;
+  background: rgba(36, 36, 38, .94);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .2), 0 0 0 .5px rgba(0, 0, 0, .8), 0 14px 36px rgba(0, 0, 0, .5);
+  color: var(--mx-label);
+  font: 400 13px/16px var(--mx-sys);
+  -webkit-font-smoothing: antialiased;
+  outline: none;
+  cursor: default;
+}
+#app-demo .mx-item {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 16px 0 4px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+#app-demo .mx-item > span { overflow: hidden; text-overflow: ellipsis; }
+#app-demo .mx-mtick { flex: none; visibility: hidden; }
+#app-demo .mx-item[aria-selected="true"] .mx-mtick { visibility: inherit; }
+#app-demo .mx-item.is-hot { background: var(--mx-accent); color: #fff; }
+
+/* ------------------------------------------------------------------ */
+/* CrossOver's sign-in window: macOS frame, classic Wine inside       */
+/* (620 x 285 Win32 window, DEFAULT_GUI_FONT, 3D push buttons)        */
+/* ------------------------------------------------------------------ */
+#app-demo .mx-wine {
+  position: absolute;
+  z-index: 4;
+  --mx-wl: clamp(10px, 7%, 56px);
+  top: 96px;
+  left: var(--mx-wl);
+  width: min(620px, calc(100% - var(--mx-wl) - 10px));
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13), 0 0 0 1px rgba(0, 0, 0, .85), 0 40px 90px -10px rgba(0, 0, 0, .85), 0 12px 32px rgba(0, 0, 0, .5);
+  container: mx-wine / inline-size;
+}
+#app-demo .mx-wine.is-inactive { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1), 0 0 0 1px rgba(0, 0, 0, .85), 0 22px 50px -10px rgba(0, 0, 0, .7); }
+.motion #app-demo .mx-wine.is-opening { animation: mx-pop .26s cubic-bezier(.2, .8, .2, 1) both; }
+.motion #app-demo .mx-wine.is-closing { animation: mx-pop .18s cubic-bezier(.4, 0, 1, 1) reverse both; }
+@keyframes mx-pop { from { opacity: 0; transform: scale(.94); } }
+#app-demo .mx-w32 {
+  padding: 18px 29px 26px 20px;
+  background: #fff;
+  color: #000;
+  font: 11px/13px Tahoma, "MS Sans Serif", Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: auto;
+}
+#app-demo .mx-w32-static {
+  min-height: 24px;
+  background: #f0f0f0;   /* statics paint COLOR_3DFACE behind their text */
+  white-space: pre-line;
+}
+#app-demo .mx-w32-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 405fr) minmax(84px, 145fr);
+  gap: 12px 15px;
+  margin-top: 13px;
+}
+#app-demo .mx-w32-btn {
+  position: relative;
+  min-width: 0;
+  min-height: 34px;
+  margin: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 0;
+  background: #f0f0f0;
+  color: #000;
+  font: inherit;
+  overflow-wrap: anywhere;
+  box-shadow: inset -1px -1px #696969, inset 1px 1px #fff, inset -2px -2px #a0a0a0, inset 2px 2px #e3e3e3;
+  cursor: default;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#app-demo .mx-w32-btn:active {
+  padding: 3px 5px 1px 7px;
+  box-shadow: inset 1px 1px #696969, inset -1px -1px #fff, inset 2px 2px #a0a0a0, inset -2px -2px #e3e3e3;
+}
+#app-demo .mx-w32-btn:focus-visible { outline: 1px dotted #000; outline-offset: -5px; }
+#app-demo .mx-w32-help { min-height: 44px; margin-top: 15px; }
+#app-demo .mx-w32-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+#app-demo .mx-w32-foot .mx-w32-btn { width: 160px; min-height: 30px; }
+
+/* ------------------------------------------------------------------ */
+/* Narrow windows: tighter margins, smaller heading, wrapping rows    */
+/* ------------------------------------------------------------------ */
+@container mx-win (max-width: 540px) {
+  #app-demo .mx-body { padding: 18px 16px 22px; }
+  #app-demo .mx-head { gap: 12px; }
+  #app-demo .mx-icon { width: 48px; height: 48px; }
+  #app-demo .mx-h { font-size: 20px; line-height: 24px; }
+  #app-demo .mx-row-16 { gap: 10px; }
+  #app-demo .mx-actions { gap: 8px; }
+  #app-demo .mx-btn { padding-left: 10px; padding-right: 10px; }
+  #app-demo .mx-popup { padding-right: 7px; }
+  #app-demo .mx-w100, #app-demo .mx-w116 { min-width: 64px; }
+  #app-demo .mx-home { min-height: 0; }
+  #app-demo .mx-sheet { width: calc(100% - 12px) !important; padding: 18px 16px; }
+  #app-demo .mx-sheet-license { padding: 14px 14px 12px; }
+  #app-demo .mx-license { height: 280px; }
+}
+@container mx-win (max-width: 330px) {
+  #app-demo .mx-head { flex-wrap: wrap; }
+  #app-demo .mx-h { flex-basis: calc(100% - 60px); }
+  #app-demo .mx-head .mx-small { margin-left: 60px; }
+}
+@container mx-wine (max-width: 520px) {
+  #app-demo .mx-w32 { padding: 14px 12px 16px; }
+  #app-demo .mx-w32-grid { gap: 10px; margin-top: 10px; }
+  #app-demo .mx-w32-help { margin-top: 10px; }
+  #app-demo .mx-w32-foot .mx-w32-btn { width: auto; padding: 2px 16px; }
+}
+@media (max-width: 900px) {
+  #app-demo .mx-wine { top: 64px; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Page-level parts (not the app): guide, ring, cards, notes          */
+/* ------------------------------------------------------------------ */
+#app-demo .mx-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 15px 7px 13px;
+  border-radius: 980px;
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 0 0 1px var(--mx-hair);
+  font: 600 14px/18px var(--mx-font);
+  color: var(--mx-text);
+}
+#app-demo .mx-guide.is-wait .mx-guide-text { color: var(--mx-text-2); }
+#app-demo .mx-dots { display: inline-flex; flex: none; gap: 5px; }
+#app-demo .mx-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .2);
+}
+#app-demo .mx-dots i.is-done { background: var(--mx-c2); }
+#app-demo .mx-dots i.is-now { background: var(--mx-c1); box-shadow: 0 0 0 3px rgba(47, 211, 255, .22); }
+.motion #app-demo .mx-guide:not(.is-wait) .mx-dots i.is-now { animation: mx-dot 1.6s ease-in-out infinite; }
+@keyframes mx-dot { 50% { box-shadow: 0 0 0 5px rgba(47, 211, 255, .08); } }
+#app-demo .mx-guide-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Page buttons */
+#app-demo .mx-pbtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 980px;
+  font: 600 15px/1.2 var(--mx-font);
+  letter-spacing: -.01em;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background-color .15s, color .15s, transform .15s;
+  --mx-r: 980px;
+}
+#app-demo .mx-pbtn:focus-visible { outline: 2px solid var(--mx-c2); outline-offset: 3px; }
+#app-demo .mx-pbtn:active { transform: scale(.97); }
+#app-demo .mx-pbtn-primary { background: var(--mx-text); color: #000; }
+#app-demo .mx-pbtn-primary:hover { background: #fff; }
+#app-demo .mx-pbtn-ghost { background: rgba(255, 255, 255, .08); color: var(--mx-text); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+#app-demo .mx-pbtn-ghost:hover { background: rgba(255, 255, 255, .13); }
+#app-demo .mx-restart {
+  flex: none;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mx-text-2);
+  background: transparent;
+}
+#app-demo .mx-restart:hover { color: var(--mx-text); background: rgba(255, 255, 255, .06); }
+#app-demo .mx-restart.is-hidden { visibility: hidden; }
+
+/* The guide's ring around the next control */
+#app-demo .mx-cue::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: 3;
+  border-radius: calc(var(--mx-r, 6px) + 5px);
+  box-shadow: 0 0 0 2px var(--mx-c2), 0 0 18px 2px rgba(47, 211, 255, .45);
+  pointer-events: none;
+}
+.motion #app-demo .mx-cue::after { animation: mx-cue 1.7s ease-out infinite; }
+@keyframes mx-cue {
+  0% { box-shadow: 0 0 0 2px var(--mx-c2), 0 0 18px 2px rgba(47, 211, 255, .45), 0 0 0 0 rgba(47, 211, 255, .5); }
+  70% { box-shadow: 0 0 0 2px var(--mx-c2), 0 0 18px 2px rgba(47, 211, 255, .3), 0 0 0 11px rgba(47, 211, 255, 0); }
+  100% { box-shadow: 0 0 0 2px var(--mx-c2), 0 0 18px 2px rgba(47, 211, 255, .45), 0 0 0 0 rgba(47, 211, 255, 0); }
+}
+
+/* Side cards: all stacked in one cell, only one shown */
+#app-demo .mx-side { min-width: 0; padding-top: var(--mx-bar); }
+#app-demo .mx-cards { display: grid; }
+#app-demo .mx-card {
+  grid-area: 1 / 1;
+  min-width: 0;
+  padding: 22px 22px 24px;
+  border-radius: 18px;
+  background: var(--mx-surface);
+  box-shadow: inset 0 0 0 1px var(--mx-hair);
+  visibility: hidden;
+  opacity: 0;
+}
+#app-demo .mx-card.is-on { visibility: inherit; opacity: 1; }
+.motion #app-demo .mx-card { transform: translateY(8px); transition: opacity .3s ease, transform .4s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .3s; }
+.motion #app-demo .mx-card.is-on { transform: none; transition: opacity .35s ease .05s, transform .45s cubic-bezier(.2, .8, .2, 1) .05s; }
+#app-demo .mx-eyebrow { font: 600 13px/18px var(--mx-font); color: var(--mx-text-2); }
+#app-demo .mx-card-text { margin-top: 10px; font: 400 15px/21px var(--mx-font); color: var(--mx-text); }
+
+/* Checklist */
+#app-demo .mx-steps { display: grid; gap: 13px; margin: 16px 0 0; padding: 0; list-style: none; }
+#app-demo .mx-step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 12px;
+  font: 400 15px/21px var(--mx-font);
+  color: rgba(245, 245, 247, .4);
+  transition: color .3s;
+}
+#app-demo .mx-step.is-busy, #app-demo .mx-step.is-done { color: var(--mx-text); }
+#app-demo .mx-step-skip { grid-column: 2; font-size: 13px; line-height: 17px; color: var(--mx-text-2); }
+#app-demo .mx-tick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .2);
+  color: #00131c;
+}
+#app-demo .mx-tick svg { width: 16px; height: 16px; opacity: 0; }
+#app-demo .is-done .mx-tick {
+  background: linear-gradient(135deg, var(--mx-c1), var(--mx-c2) 50%, var(--mx-c3));
+  box-shadow: 0 0 14px rgba(47, 211, 255, .35);
+}
+#app-demo .is-done .mx-tick svg { opacity: 1; }
+.motion #app-demo .is-done .mx-tick { animation: mx-tick .4s cubic-bezier(.2, .9, .3, 1.4); }
+@keyframes mx-tick { from { transform: scale(.5); } }
+#app-demo .is-busy .mx-tick { box-shadow: inset 0 0 0 2px rgba(47, 211, 255, .2); }
+#app-demo .is-busy .mx-tick::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--mx-c2);
+  border-right-color: var(--mx-c2);
+}
+.motion #app-demo .is-busy .mx-tick::before { animation: mx-spin .8s linear infinite; }
+@keyframes mx-spin { to { transform: rotate(360deg); } }
+#app-demo .is-skip .mx-tick::before {
+  content: "";
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, .3);
+}
+#app-demo .is-skip .mx-step-text { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .25); }
+
+/* Sign-in card */
+#app-demo .mx-code {
+  margin: 16px 0 18px;
+  font: 600 28px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: .08em;
+  color: var(--mx-text);
+}
+
+/* Finale */
+#app-demo .mx-badge {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mx-c1), var(--mx-c2) 50%, var(--mx-c3));
+  box-shadow: 0 0 30px rgba(47, 211, 255, .45);
+  color: #00131c;
+}
+#app-demo .mx-badge svg { width: 26px; height: 26px; }
+.motion #app-demo .mx-card-done.is-on .mx-badge { animation: mx-tick .6s cubic-bezier(.2, .9, .3, 1.4) .15s both; }
+#app-demo .mx-done-line {
+  margin: 16px 0 20px;
+  font: 600 22px/1.25 var(--mx-font);
+  letter-spacing: -.015em;
+  color: var(--mx-text);
+}
+#app-demo .mx-done-b {
+  background: var(--mx-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Reopen button (after Close Window) and the page note bubble */
+#app-demo .mx-reopen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+#app-demo .mx-reopen-icon { width: 24px; height: 24px; margin-left: -6px; }
+.motion #app-demo .mx-reopen { animation: mx-fade .4s ease .1s both; }
+@keyframes mx-fade { from { opacity: 0; } }
+#app-demo .mx-note {
+  position: absolute;
+  z-index: 60;
+  max-width: min(290px, 100%);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(16, 16, 18, .94);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 0 0 1px rgba(47, 211, 255, .45), 0 14px 34px rgba(0, 0, 0, .55);
+  font: 500 13px/18px var(--mx-font);
+  color: var(--mx-text);
+}
+#app-demo .mx-note::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: calc(var(--mx-arrow, 50%) - 6px);
+  width: 12px;
+  height: 12px;
+  border-radius: 2px 0 0 0;
+  background: inherit;
+  box-shadow: inset 1px 1px 0 rgba(47, 211, 255, .45);
+  transform: rotate(45deg);
+}
+.motion #app-demo .mx-note.is-in { animation: mx-note .25s cubic-bezier(.2, .8, .2, 1); }
+@keyframes mx-note { from { opacity: 0; transform: translateY(-4px); } }
+
+@media (max-width: 900px) {
+  #app-demo .mx-side { padding-top: 0; }
+}
+@media (max-width: 480px) {
+  #app-demo .mx-top { margin-bottom: 14px; }
+  #app-demo .mx-guide { padding: 6px 13px 6px 11px; font-size: 13px; }
+  #app-demo .mx-restart { padding: 6px 9px; }
+  #app-demo .mx-restart-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #app-demo .mx-card { padding: 18px 18px 20px; }
+  #app-demo .mx-done-line { font-size: 20px; }
+}

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy – MCD2 Crossover</title>
+<meta name="description" content="MCD2 Crossover collects no data: what it stores on your Mac, where your Microsoft sign-in is kept, and when it goes online.">
+<link rel="canonical" href="https://wanzho.github.io/mcd2-crossover/privacy.html">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="style.css">
+<style>
+  .legal-page { padding: calc(var(--nav-h) + clamp(56px, 10vh, 110px)) 0 clamp(80px, 12vh, 140px); }
+  .legal-page .container { width: min(692px, 100% - 2 * var(--gutter)); }
+  .legal-head { padding-bottom: clamp(32px, 5vh, 48px); border-bottom: 1px solid var(--hairline); }
+  .legal-head h1 { font-size: clamp(48px, 7vw, 80px); line-height: 1.05; font-weight: 600; letter-spacing: -.015em; }
+  .legal-head .updated { margin-top: 14px; font-size: 17px; color: var(--text-2); }
+  .legal-lead { margin-top: clamp(32px, 5vh, 48px); font-size: clamp(21px, 2.2vw, 28px); line-height: 1.25; font-weight: 600; letter-spacing: .007em; color: var(--text-2); }
+  .legal-lead strong { color: var(--text); }
+  .legal-page h2 { margin-top: clamp(44px, 6vh, 64px); font-size: 28px; line-height: 1.14; font-weight: 600; letter-spacing: .007em; }
+  .legal-page ul { margin-top: 18px; display: grid; gap: 14px; }
+  .legal-page li { position: relative; padding-left: 22px; color: var(--text-2); }
+  .legal-page li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 6px; height: 6px; border-radius: 50%; background: linear-gradient(135deg, #8af6ff, #2b8cff); }
+  .legal-page li strong { color: var(--text); }
+  .legal-page p.body { margin-top: 18px; color: var(--text-2); }
+  .legal-page code { white-space: normal; overflow-wrap: anywhere; }
+  .ln-back { font-size: 12px; color: rgba(255, 255, 255, .8); }
+  .ln-back:hover { color: #fff; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="localnav is-scrolled" aria-label="MCD2 Crossover">
+  <div class="ln-inner">
+    <a class="ln-brand" href="./"><img src="favicon.png" alt="" width="26" height="26"><span>MCD2 Crossover</span></a>
+    <a class="ln-back" href="./">Overview</a>
+    <a class="ln-cta" href="https://github.com/Wanzho/mcd2-crossover/releases/latest">Download</a>
+  </div>
+</nav>
+
+<main id="main" class="legal-page">
+  <div class="container">
+    <header class="legal-head">
+      <h1>Privacy</h1>
+      <p class="updated">MCD2 Crossover and this website · last updated 7 October 2026</p>
+    </header>
+
+    <p class="legal-lead"><strong>MCD2 Crossover collects no data.</strong> It has no accounts of its own, no analytics, ads or tracking, and sends nothing about you or your Mac to its author.</p>
+
+    <h2>Your Microsoft sign&#8209;in</h2>
+    <ul>
+      <li><strong>You sign in on Microsoft’s own website</strong>, with a one&#8209;time code. The app never sees your password.</li>
+      <li><strong>The renewal token stays in macOS Keychain</strong>, in an item that doesn’t sync to iCloud. It reaches the app’s helper through a pipe, never a command line or a log.</li>
+      <li>The current session sits in <code>~/Library/Application Support/DungeonsCrossOver</code>, readable only by your user account. A small background task in your account renews it shortly before it expires, so the game can sign in when you start it from Steam.</li>
+      <li><strong>Sign Out</strong> deletes the Keychain item and the session. It doesn’t revoke a token Microsoft has already issued; you can do that from your Microsoft account’s security page.</li>
+    </ul>
+
+    <h2>What it stores, only on your Mac</h2>
+    <ul>
+      <li>Your choices: the selected bottle and game copy, and the app language, in <code>~/Library/Application Support/DungeonsCrossOver</code>.</li>
+      <li>In the game’s folder: the compatibility files setup adds, backups of every file it replaces, and a record of what it changed. Steam’s launch option for Minecraft Dungeons&nbsp;II, with a backup of the previous one.</li>
+      <li><strong>Troubleshooting logs, only when you start recording.</strong> Recording stops after an hour, even with the app closed. <strong>Save Logs…</strong> writes a ZIP where you choose. It leaves out passwords, tokens, session data, game saves, account identifiers, your folder paths and full web addresses; you decide whether to attach it to a bug report.</li>
+    </ul>
+
+    <h2>When it goes online</h2>
+    <ul>
+      <li><strong>Signing in and renewing:</strong> Microsoft’s and Xbox’s sign&#8209;in services. Microsoft’s <a href="https://privacy.microsoft.com/privacystatement">privacy statement</a> applies.</li>
+      <li><strong>During setup:</strong> it downloads Microsoft’s portable Xbox runtime from NuGet, curl’s Windows build from curl.se, and, if Visual&nbsp;C++ is missing, Microsoft’s installer from Microsoft. The runtime and curl are checked against fixed fingerprints before they’re used.</li>
+      <li>The game itself talks to its own servers as it normally would.</li>
+      <li><strong>Help</strong> opens this project’s GitHub page in your browser. The app doesn’t check for updates by itself.</li>
+    </ul>
+
+    <h2>This website</h2>
+    <ul>
+      <li><strong>The newest release.</strong> The page asks GitHub’s public API once per visit which release is the newest, to show its version, size and download link. Your browser keeps that until you close the tab.</li>
+      <li><strong>The replica in Try it</strong> runs entirely in your browser. Nothing is installed, and nobody signs in.</li>
+      <li>Nothing else: no cookies, analytics, trackers, or fonts and scripts from other sites. The site and the downloads are hosted by GitHub; GitHub’s <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a> applies there.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p class="body">Questions: <a href="https://github.com/Wanzho/mcd2-crossover/issues">open an issue on GitHub</a>.</p>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <nav class="footer-links" aria-label="Links">
+      <a href="./">MCD2 Crossover</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover">GitHub</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/releases/latest">Download</a>
+      <a href="https://github.com/Wanzho/mcd2-crossover/issues">Issues</a>
+    </nav>
+    <p class="legal">Unofficial fan project. Not affiliated with Mojang, Microsoft, Valve or CodeWeavers. Minecraft is a trademark of Mojang Synergies&nbsp;AB.</p>
+  </div>
+</footer>
+
+</body>
+</html>
