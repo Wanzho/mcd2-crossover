@@ -87,6 +87,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     // Accept the earlier private test labels for the same installed repair.
     BOOL ready = ([saved[@"app_version"] isEqualToString:@"0.2.0"]
         || [saved[@"app_version"] isEqualToString:@"0.2.1"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.2"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
@@ -160,7 +161,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.accountLabel = nil;
     self.closeButton = nil;
     self.changeBottleButton = nil;
-    self.choose = nil; self.bottles = nil; self.stores = nil; self.license = nil; self.gameCopy = nil; self.gameSelection = nil;
+    self.choose = nil; self.gameLabel = nil; self.bottles = nil; self.stores = nil; self.license = nil; self.gameCopy = nil; self.gameSelection = nil;
     [self.scroll removeFromSuperview];
     NSRect available = (self.window.screen ?: NSScreen.mainScreen).visibleFrame;
     NSRect frame = self.window.frame; frame.size = NSMakeSize(700,MIN(setup ? 610 : 480, available.size.height - 40));
@@ -198,10 +199,6 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         NSString *bottle = settings()[@"bottle"];
         self.changeBottleButton = [NSButton buttonWithTitle:L(@"Change Game Copy") target:self action:@selector(changeBottle:)];
         [self.stack addArrangedSubview:[self buttonRow:@[label([L(@"CrossOver bottle: ") stringByAppendingString:bottle ?: L(@"Not selected")],13,NSFontWeightMedium),self.changeBottleButton]]];
-        self.gameLabel = label([L(@"Game folder: ") stringByAppendingString:[settings()[@"game"] stringByAbbreviatingWithTildeInPath] ?: L(@"Not selected")],13,NSFontWeightRegular);
-        self.gameLabel.selectable = YES; [self.stack addArrangedSubview:self.gameLabel];
-        self.choose = [NSButton buttonWithTitle:L(@"Browse Game Copy…") target:self action:@selector(chooseFolder:)];
-        [self.stack addArrangedSubview:[self buttonRow:@[self.choose]]];
         [self.stack addArrangedSubview:label(L(@"Saved sign-in renews in the background. If the game asks you to sign in again, click Play to reconnect."),13,NSFontWeightRegular)];
     }
     self.status = label(setup ? L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish.") : L(@"To change Microsoft accounts, quit the game and choose Sign Out."),13,NSFontWeightRegular);

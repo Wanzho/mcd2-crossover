@@ -1,5 +1,9 @@
 # Testing
 
+## 0.1.3
+
+The home screen keeps game-folder details and browsing in the Change Game Copy sheet. This update changes the app interface; installations set up with 0.1.2 remain compatible.
+
 ## 0.1.2
 
 91 automated tests passed. Native checks covered account display and all 18 app translation catalogs: the 17 languages listed for the Steam game plus European Portuguese. The actual sign-in prompt parser passed Unicode, clipboard and malformed-input checks. The helpers and compatibility DLLs rebuilt successfully.
