@@ -409,6 +409,8 @@ kbd.wide { min-width: 4.2em; }
 }
 .hero-sub-lead { color: var(--text); }
 .hero .cta-row { margin-top: clamp(20px, 3.4vh, 34px); }
+.hero-links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 28px; margin-top: 18px; }
+.hero-links .hero-gh { font-size: 15px; }
 .hero-fine { margin-top: 16px; font-size: 14px; line-height: 1.43; letter-spacing: -.016em; color: var(--text-2); }
 
 /* intro words rise once on load (transform only, so the first paint is never blank) */
@@ -417,6 +419,7 @@ kbd.wide { min-width: 4.2em; }
 .motion .hero-copy > :nth-child(3) { animation-delay: .16s; }
 .motion .hero-copy > :nth-child(4) { animation-delay: .24s; }
 .motion .hero-copy > :nth-child(5) { animation-delay: .3s; }
+.motion .hero-copy > :nth-child(6) { animation-delay: .36s; }
 @keyframes rise { from { transform: translateY(26px); } to { transform: none; } }
 
 /* ------------------------------------------------------------------ */
