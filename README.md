@@ -41,27 +41,6 @@ Your Microsoft sign-in stays saved. The previous bottle keeps its repair; the ap
 
 Quit the game, open **MCD2 Crossover**, and click **Sign Out**. This removes the saved Microsoft credential and local session. Click **Play** to sign in again with the account you want.
 
-## New in 0.1.3
-
-Kept the game folder and browsing controls inside **Change Game Copy…**. The home screen shows the selected bottle, Xbox account and Play controls.
-
-## New in 0.1.2
-
-- Shows **Signed in to:** with your Xbox username.
-- Opens **Change Game Copy…** in a compact sheet, keeping the home screen underneath.
-- Adds **It isn’t open!** when another game or an uncertain process check blocks setup. The selected game’s files stay protected while it is running.
-- Translates the app and sign-in window into all 17 languages listed for Dungeons II on Steam, plus European Portuguese. Choose **Language…** from the app menu.
-
-## New in 0.1.1
-
-Added game copy selection and troubleshooting logs:
-
-- **Browse Game Copy…** chooses another game copy inside **Change Game Copy…** or setup. Select its game folder or `Dungeons-…-Shipping.exe`; the app checks the layout before setup.
-- Choose **Steam** or **Minecraft Launcher (experimental)** under **Launcher:** when setting up that copy. The Steam route stays the same. Launcher mode starts an existing Windows game copy through CrossOver and needs its own valid entitlement. A Steam purchase does not unlock the Launcher edition.
-- **Troubleshooting…** in the top-right corner opens recording and ZIP export. Logging is off by default, stops after an hour and never uploads anything. Credentials and game saves are excluded from exports.
-
-Launcher support has not been tested with an owned non-Steam copy. Windows Store licensing may still prevent it from running; this is a compatibility attempt, not confirmed Launcher support. It does not install Minecraft Launcher or download the game.
-
 ## Troubleshooting
 
 Still having trouble? [Open an issue here](https://github.com/Wanzho/mcd2-crossover/issues/new/choose).
