@@ -87,7 +87,7 @@ class SessionSafetyTests(unittest.TestCase):
             log.write_text('[AppID 123] Starting sync (eval,)\n')
             with patch.object(watch.time,'time',return_value=log.stat().st_mtime+60):
                 self.assertTrue(watch.cloud_busy(root))
-            log.write_text('[AppID 123] Starting sync (eval,)\n[AppID 123] Eval complete\n')
+            log.write_text('[AppID 123] Starting sync (eval,)\n[AppID 123] Eval complete\n[AppID 760] Starting sync (Get App Quota Usage,)\n[AppID 456] Starting sync (init,)\n[AppID 456] Init cache request complete\n')
             self.assertTrue(watch.cloud_busy(root))
             with patch.object(watch.time,'time',return_value=log.stat().st_mtime+60):
                 self.assertFalse(watch.cloud_busy(root))

@@ -194,8 +194,8 @@ def cloud_busy(bottle):
             match = re.search(r'\[AppID (\d+)\] (.*)',line)
             if not match: continue
             app, message = match.groups()
-            if 'Starting sync' in message: pending.add(app)
-            elif 'Successfully synced' in message or 'Eval complete' in message:
+            if 'Starting sync' in message and 'Get App Quota Usage' not in message: pending.add(app)
+            elif any(done in message for done in ('Successfully synced','Eval complete','Init cache request complete')):
                 pending.discard(app)
         return bool(pending)
     except (OSError,UnicodeError): return True
