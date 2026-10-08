@@ -3,7 +3,7 @@
 import argparse, hashlib, json, plistlib, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 from pathlib import Path
 from localize import native_resources
-from updater import dependency, settings as update_settings, embed as embed_updater
+from updater import settings as update_settings, embed as embed_updater
 
 ROOT=Path(__file__).resolve().parents[1]
 PYTHON_URL='https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.13.15%2B20260929-aarch64-apple-darwin-install_only_stripped.tar.gz'
@@ -91,9 +91,8 @@ def main():
         'CFBundleName':'MCD2 Crossover','CFBundleDisplayName':'MCD2 Crossover','CFBundleIconFile':'AppIcon.icns',
         'CFBundleVersion':args.version,'CFBundleShortVersionString':args.version,'CFBundlePackageType':'APPL','LSMinimumSystemVersion':'13.0',
         'NSHighResolutionCapable':True, **update_settings('mcd2')}))
-    sparkle=dependency(ROOT/'build/sparkle')
-    embed_updater(app,sparkle)
-    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers','-F',sparkle,'-framework','Sparkle','-Wl,-rpath,@executable_path/../Frameworks',ROOT/'packaging/installer.m',ROOT/'packaging/CrossoverUpdater.m','-o',contents/'MacOS/installer'])
+    frameworks=embed_updater(app,ROOT/'packaging/CrossoverUpdater.swift')
+    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers','-L',frameworks,'-lCrossoverUpdates','-Wl,-rpath,@executable_path/../Frameworks',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
     shutil.copy2(ROOT/'assets/AppIcon.icns',resources/'AppIcon.icns')
     for folder,names in {'scripts':['install.py','startup.py','game_copy.py','game_process.py'],'helper':['bridge.py','diagnostics.py','localization.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
         dest=resources/folder;dest.mkdir()
@@ -135,7 +134,7 @@ def main():
         subprocess.run(['/usr/bin/xattr','-r','-d',attribute,str(app)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     if source_origin(args.version)!=origin:
         raise SystemExit('Tracked source changed during packaging. Start again from a clean commit.')
-    # Preserve vendor signatures on nested Sparkle helpers. Seal the outer app
+    # Preserve signatures on nested helpers. Seal the outer app
     # again after recording the bundled helper hashes.
     run(['/usr/bin/codesign','--force','--sign','-',app])
     origin['bundled_build_sha256']={str(path.relative_to(resources)):hashlib.sha256(path.read_bytes()).hexdigest()

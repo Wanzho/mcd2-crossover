@@ -1,25 +1,27 @@
-# Signed app updates
+# Native in-app updates
 
-The upcoming 0.1.4 app adds **Check for Updates…** and **Automatically Install Updates** to the app menu. Sparkle 2.10.0 downloads, verifies, replaces and relaunches the app. Existing versions need one initial manual upgrade to gain this feature.
+**Check for Updates…** queries this project's GitHub releases. **Automatically Check for Updates** checks when the app opens, at most once per day. An available release shows its notes and **Update Now**. Clicking it downloads, verifies, replaces and reopens the app; no manual DMG installation is needed in a writable Applications folder.
 
-Production feed: `https://raw.githubusercontent.com/Wanzho/mcd2-crossover/main/appcast.xml`.
-The feed must be published alongside the referenced release archive before distribution. The source URL is configured; publication is a separate release step.
+Only macOS Cocoa, Foundation and CryptoKit are used. There is no Sparkle runtime, update service or permanent polling process. The flow follows wasdmod's native updater. Older launcher releases need one initial manual upgrade to gain in-app updates.
 
-Both the appcast and archives require Ed25519 signatures. The private key stays in the release maintainer's macOS Keychain under account `org.wanzho.crossover.updates`. Never commit or bundle it. The dependency download is pinned by SHA-256 in `scripts/updater.py`; preserve the vendor signatures of Sparkle's nested helpers.
+## Trust and installation
 
-## Packaging
+Each release includes an app ZIP, `update.json` and `update.sig`. The signature is standard Ed25519 over the exact JSON bytes. A public key pinned in the app verifies the manifest; its SHA-256 and byte count bind the archive. Allowed HTTPS download and redirect hosts are restricted to GitHub. The extracted app must match the signed bundle ID, version and build and pass strict code-signature verification.
 
-Build normally with `scripts/package_release.py`. Create a ZIP containing the signed app using `ditto -c -k --keepParent`. Put its matching HTML release notes next to the ZIP, then run:
+MCD1 opts into preview releases. MCD2 uses stable releases. Version comparison handles numeric components and preview identifiers.
+
+The updater waits while Dungeons, sign-in or setup is running. A pending update blocks new launch/setup actions. The replacement uses an atomic directory swap and retains the old app until the new one confirms startup. A failed relaunch restores the old app. A read-only folder is reported without modifying the original. Game files, saved settings and account data are outside the replacement.
+
+## Release assets
+
+Build the app normally and create its ZIP using `ditto -c -k --keepParent`. Put plain-text release notes beside it. Generate the manifest and signature:
 
 ```sh
-python3 scripts/make_update_feed.py /path/to/release-folder \
-  --download-url-prefix https://github.com/Wanzho/mcd2-crossover/releases/download/v0.1.4/
+python3 scripts/make_update_feed.py --app '/path/MCD2 Crossover.app' \
+  --archive /path/release/MCD2-Crossover-0.1.4-arm64.zip \
+  --notes /path/release/notes.txt --signing-tool /path/to/sign_update
 ```
 
-Upload the archive at that exact URL and publish the generated, signed `appcast.xml` to the repository root. Do not edit the signed XML afterward. For a verified important bug fix, write the reason in its release notes and add `--critical`; do not label unverified battery mitigations as a confirmed fix.
+The existing maintainer-only `sign_update` command can sign the manifest using the existing Keychain key. It comes from Sparkle's release tools but is not linked, shipped or needed by users. Another standard Ed25519 signer can produce the same detached signature. Never export the release private key into an app or repository.
 
-## Validation
-
-Disposable copies of both launchers updated from test build 1 to build 2 and relaunched successfully. Strict bundle verification passed. A modified signed feed was rejected. Tests cover setup/game/sign-in blocking, deferred replacement, the quit guard and recovery after the game closes. Wine process names come from `ps comm`, because `proc_pidpath` can report `explorer.exe` for unrelated Windows processes. The updater does not start Wine to inspect processes.
-
-Long-running gameplay and unattended overnight updates have not been tested. No battery fix is claimed by this feature.
+Upload the ZIP, `update.json` and `update.sig` to the matching GitHub release. Do not alter the manifest after signing. Set `--important` only for a verified important fix and explain it in the release notes. No permanent Wine battery fix is claimed by this updater.
