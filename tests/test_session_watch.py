@@ -63,11 +63,22 @@ class SessionSafetyTests(unittest.TestCase):
             watch.cleanup(Path('/bottle'), Path('/game'), True); launch.assert_not_called()
 
     def test_cleanup_only_shuts_selected_empty_prefix(self):
-        with patch.object(watch, 'event'), patch.object(watch, 'rows', return_value={}), patch.object(watch, 'bottle_rows', side_effect=[{1: ('time','steam.exe','steam.exe')}, {}]), patch.object(watch, 'downloads_pending', return_value=False), patch.object(watch.time, 'sleep'), patch.object(watch.subprocess, 'Popen') as launch, patch.object(watch.subprocess, 'run') as stop:
+        with patch.object(watch, 'event'), patch.object(watch, 'rows', return_value={}), patch.object(watch, 'bottle_rows', side_effect=[{1: ('time','steam.exe','steam.exe')}, {1: ('time','steam.exe','steam.exe')}, {}]), patch.object(watch, 'downloads_pending', return_value=False), patch.object(watch.time, 'sleep'), patch.object(watch.subprocess, 'Popen') as launch, patch.object(watch.subprocess, 'run') as stop:
             watch.cleanup(Path('/bottles/Selected'), Path('/game'), True)
             self.assertIn('Selected', launch.call_args.args[0])
             self.assertEqual(stop.call_args.kwargs['env']['WINEPREFIX'], '/bottles/Selected')
             self.assertEqual(stop.call_args.args[0][-1], '-k')
+
+    def test_only_recorded_game_helpers_can_be_terminated(self):
+        helper=('old','game/EpicWebHelper.exe','epicwebhelper.exe')
+        steam=('old','steam.exe','steam.exe')
+        with patch.object(watch,'event'), patch.object(watch,'rows',return_value={2:helper}), patch.object(watch,'bottle_rows',side_effect=[{1:steam,2:helper},{1:steam},{}]), patch.object(watch,'game_helpers',return_value={2:helper}), patch.object(watch,'downloads_pending',return_value=False), patch.object(watch.time,'sleep'), patch.object(watch.os,'kill') as kill, patch.object(watch.subprocess,'Popen'), patch.object(watch.subprocess,'run'):
+            watch.cleanup(Path('/bottle'),Path('/game'),True,{2:helper})
+            kill.assert_called_once_with(2,watch.signal.SIGTERM)
+        replacement=('new','game/EpicWebHelper.exe','epicwebhelper.exe')
+        with patch.object(watch,'event'), patch.object(watch,'rows',return_value={2:replacement}), patch.object(watch,'bottle_rows',return_value={2:replacement}), patch.object(watch.os,'kill') as kill:
+            watch.cleanup(Path('/bottle'),Path('/game'),True,{2:helper})
+            kill.assert_not_called()
 
     def test_download_guard_checks_external_libraries(self):
         with tempfile.TemporaryDirectory() as t:

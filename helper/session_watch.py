@@ -195,11 +195,49 @@ def terminate_game(pid, identity, executable, windows, lifetime):
     return True
 
 
-def cleanup(bottle, game, owned):
+def game_helpers(bottle, game, snapshot):
+    """Only the selected game's physical web helper and our exact launch script."""
+    found = {}
+    epic = game/'Engine/Binaries/Win64/EpicWebHelper.exe'
+    try: relative = game.relative_to(bottle/'drive_c')
+    except ValueError: relative = None
+    game_win = ('c:/' + relative.as_posix()).lower() if relative else None
+    for pid, row in snapshot.items():
+        if row[2] == 'epicwebhelper.exe':
+            paths = files(pid)
+            if paths and any(_same_file(p, epic) for p in paths): found[pid] = row
+        elif row[2] == 'cmd.exe' and game_win:
+            result = run(['/bin/ps','-p',str(pid),'-o','args='])
+            command = result.stdout.strip().lower().replace('\\','/').replace('"','')
+            expected = ('c:/windows/system32/cmd.exe /d /s /c ' + game_win
+                        + '/mcd2crossoverlaunch.cmd ' + game_win + '/dungeons.exe')
+            paths = files(pid)
+            if result.returncode == 0 and command == expected and paths and any(_bottle_file(p,bottle) for p in paths):
+                found[pid] = row
+    return found
+
+
+def cleanup(bottle, game, owned, helpers=None):
     if not owned: event('preexisting_steam_preserved'); return
     selected = bottle_rows(bottle, rows())
-    if selected is None or any(row[2] not in SYSTEM | STEAM for row in selected.values()):
+    helpers = helpers or {}
+    if selected is None or any(row[2] not in SYSTEM | STEAM and helpers.get(pid) != row for pid,row in selected.items()):
         event('other_application_preserved'); return
+    # The game is gone. Close only helpers identified while it was running,
+    # rechecking both process lifetime and physical game/script identity.
+    verified = game_helpers(bottle, game, selected) if helpers else {}
+    for pid, identity in helpers.items():
+        if verified.get(pid) == identity and rows().get(pid) == identity:
+            try: os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError: pass
+    for _ in range(6):
+        selected = bottle_rows(bottle, rows())
+        if selected is None: event('observation_failed_no_cleanup'); return
+        if not any(row[2] not in SYSTEM | STEAM for row in selected.values()): break
+        if any(row[2] not in SYSTEM | STEAM and helpers.get(pid) != row for pid,row in selected.items()):
+            event('other_application_preserved'); return
+        time.sleep(5)
+    else: event('game_helper_exit_incomplete'); return
     if downloads_pending(bottle, game): event('steam_download_preserved'); return
     steam = {p: r for p, r in selected.items() if r[2] == 'steam.exe'}
     if len(steam) > 1: return
@@ -240,9 +278,11 @@ def watch(bottle, game, owned):
         time.sleep(5)
     if not tracked: event('game_start_not_observed'); return
     event('watching_game')
-    terminated = {}
+    terminated = {}; helpers = {}
     while tracked:
         time.sleep(5); snapshot = rows()
+        if any(snapshot.get(pid) == value[0] for pid,value in tracked.items()):
+            helpers.update(game_helpers(bottle, game, snapshot))
         for pid, (identity, executable, lifetime) in list(tracked.items()):
             if snapshot.get(pid) != identity: del tracked[pid]; continue
             if pid in terminated:
@@ -252,7 +292,7 @@ def watch(bottle, game, owned):
             if lifetime.closed(windows.snapshot(pid), time.monotonic()):
                 if terminate_game(pid, identity, executable, windows, lifetime):
                     terminated[pid] = time.monotonic()
-    cleanup(bottle, game, owned)
+    cleanup(bottle, game, owned, helpers)
 
 
 def main():
