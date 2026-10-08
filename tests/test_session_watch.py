@@ -80,6 +80,25 @@ class SessionSafetyTests(unittest.TestCase):
             watch.cleanup(Path('/bottle'),Path('/game'),True,{2:helper})
             kill.assert_not_called()
 
+    def test_cloud_activity_blocks_stuck_steam_cleanup(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);log=root/'drive_c/Program Files (x86)/Steam/logs/cloud_log.txt';log.parent.mkdir(parents=True)
+            self.assertTrue(watch.cloud_busy(root))
+            log.write_text('[AppID 123] Starting sync (eval,)\n')
+            with patch.object(watch.time,'time',return_value=log.stat().st_mtime+60):
+                self.assertTrue(watch.cloud_busy(root))
+            log.write_text('[AppID 123] Starting sync (eval,)\n[AppID 123] Eval complete\n')
+            self.assertTrue(watch.cloud_busy(root))
+            with patch.object(watch.time,'time',return_value=log.stat().st_mtime+60):
+                self.assertFalse(watch.cloud_busy(root))
+
+    def test_stuck_owned_steam_only_stops_when_quiet_and_unchanged(self):
+        steam={1:('old','steam.exe','steam.exe')}
+        for busy in (True,False):
+            with patch.object(watch,'event'),patch.object(watch,'rows',return_value={}),patch.object(watch,'bottle_rows',return_value=steam),patch.object(watch,'downloads_pending',return_value=False),patch.object(watch,'cloud_busy',return_value=busy),patch.object(watch.time,'sleep'),patch.object(watch.subprocess,'Popen'),patch.object(watch.subprocess,'run') as stop:
+                watch.cleanup(Path('/bottle'),Path('/game'),True)
+                self.assertEqual(stop.call_count,0 if busy else 1)
+
     def test_download_guard_checks_external_libraries(self):
         with tempfile.TemporaryDirectory() as t:
             b=Path(t); a=b/'drive_c/Program Files (x86)/Steam/steamapps'; a.mkdir(parents=True)

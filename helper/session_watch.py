@@ -177,6 +177,30 @@ def downloads_pending(bottle, game):
     except (OSError, ValueError): return True
 
 
+def cloud_busy(bottle):
+    """Do not force an owned Steam session closed during cloud work.
+
+    Unrecognized/incomplete sync activity fails closed. A quiet log alone is
+    insufficient: each observed start must have a completion for that app.
+    """
+    path = bottle/'drive_c/Program Files (x86)/Steam/logs/cloud_log.txt'
+    try:
+        if time.time() - path.stat().st_mtime < 15: return True
+        with path.open('rb') as f:
+            size = f.seek(0, 2); f.seek(max(0,size-2*1024*1024))
+            lines = f.read().decode('utf-8',errors='strict').splitlines()
+        pending = set()
+        for line in lines:
+            match = re.search(r'\[AppID (\d+)\] (.*)',line)
+            if not match: continue
+            app, message = match.groups()
+            if 'Starting sync' in message: pending.add(app)
+            elif 'Successfully synced' in message or 'Eval complete' in message:
+                pending.discard(app)
+        return bool(pending)
+    except (OSError,UnicodeError): return True
+
+
 def event(name):
     # Only status codes, never account names, paths, arguments or credentials.
     path = HOME / 'session-cleanup.json'
@@ -258,7 +282,18 @@ def cleanup(bottle, game, owned, helpers=None):
         subprocess.run([str(Path(WINE).with_name('wineserver')), '-k'], env=env,
                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         event('idle_bottle_stopped'); return
-    event('steam_shutdown_incomplete')
+    # Wine can keep an app-owned Steam client waiting after its game is gone.
+    # Only stop that session when identity is unchanged, no other application
+    # or download remains, and completed cloud activity has been quiet.
+    selected = bottle_rows(bottle, rows())
+    if (selected is None or any(r[2] not in SYSTEM | STEAM for r in selected.values())
+        or any(r[2] == 'steam.exe' and steam.get(pid) != r for pid,r in selected.items())
+        or downloads_pending(bottle, game) or cloud_busy(bottle)):
+        event('steam_shutdown_incomplete'); return
+    env = os.environ.copy(); env['WINEPREFIX'] = str(bottle)
+    subprocess.run([str(Path(WINE).with_name('wineserver')), '-k'], env=env,
+                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10, check=True)
+    event('idle_owned_session_stopped')
 
 
 def watch(bottle, game, owned):
