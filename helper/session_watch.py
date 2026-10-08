@@ -122,12 +122,12 @@ class Windows:
             for i in range(self.cf.CFArrayGetCount(array)):
                 d = self.cf.CFArrayGetValueAtIndex(array, i)
                 if self.number(d, 'kCGWindowOwnerPID') != pid: continue
-                ident = int(self.number(d, 'kCGWindowNumber')); all_ids.add(ident)
+                ident = int(self.number(d, 'kCGWindowNumber'))
                 bounds = self.value(d, 'kCGWindowBounds'); shown = self.value(d, 'kCGWindowIsOnscreen')
-                if (bounds and shown and self.cf.CFBooleanGetValue(shown)
-                    and self.number(d, 'kCGWindowLayer') == 0
+                if (bounds and self.number(d, 'kCGWindowLayer') == 0
                     and self.number(bounds, 'Width') >= 240 and self.number(bounds, 'Height') >= 180):
-                    visible.add(ident)
+                    all_ids.add(ident)
+                    if shown and self.cf.CFBooleanGetValue(shown): visible.add(ident)
             return all_ids, visible
         finally: self.cf.CFRelease(array)
 
