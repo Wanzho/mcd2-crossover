@@ -110,7 +110,10 @@ class AuthTests(unittest.TestCase):
         with patch.object(bridge.fcntl,'flock',side_effect=BlockingIOError),patch.object(bridge.subprocess,'Popen') as spawn,patch.object(bridge.subprocess,'run') as external,patch.object(bridge,'keychain',side_effect=AssertionError('Ready helper must not read a credential')):
             bridge.launch('Launcher Test')
         external.assert_not_called()
-        spawn.assert_called_once()
+        self.assertEqual(spawn.call_count,2)
+        watcher=spawn.call_args_list[0].args[0]
+        self.assertTrue(any(value.endswith('session_watch.py') for value in watcher))
+        self.assertNotIn('--owned-steam',watcher)
         command=spawn.call_args.args[0]
         expected='Z:'+str((binary/'Dungeons-WinGDK-Shipping.exe').resolve()).replace('/','\\')
         self.assertIn(expected,command)

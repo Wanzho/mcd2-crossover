@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'helper'))
 import diagnostics
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
-VERSION = '0.1.4'
+VERSION = '0.1.5'
 CROSSOVER = Path('/Applications/CrossOver.app')
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
@@ -84,7 +84,7 @@ def main():
         backup=HOME/'backups'/str(time.time_ns());backup.mkdir(parents=True,mode=0o700)
         # Keep the previous helper/settings too, before updating them. Credentials
         # are not exported into the backup or release.
-        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','settings.json','installation.json'):
+        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','runtime/session_watch.py','runtime/game_process.py','settings.json','installation.json'):
             previous=HOME/relative
             if previous.is_file():
                 dest=backup/'helper'/relative;dest.parent.mkdir(parents=True,exist_ok=True)
@@ -114,6 +114,8 @@ def main():
     for name in ('keychain','signin-ui.exe'):
         write(runtime/name,(ROOT/'build'/name).read_bytes(),True)
     write(runtime/'bridge.py',(ROOT/'helper/bridge.py').read_bytes())
+    write(runtime/'session_watch.py',(ROOT/'helper/session_watch.py').read_bytes())
+    write(runtime/'game_process.py',(ROOT/'scripts/game_process.py').read_bytes())
     write(runtime/'diagnostics.py',(ROOT/'helper/diagnostics.py').read_bytes())
     write(runtime/'localization.py',(ROOT/'helper/localization.py').read_bytes())
     for catalog in sorted((ROOT/'localization').glob('*.json')):

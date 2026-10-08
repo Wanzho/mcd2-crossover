@@ -5,6 +5,7 @@ opt-in, contain only whitelisted status fields, and never contain credentials.
 """
 import argparse, base64, contextlib, datetime, fcntl, hashlib, json, os
 import signal, ssl, struct, subprocess, sys, time, urllib.error, urllib.parse, urllib.request, uuid
+import select
 from pathlib import Path
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -53,6 +54,58 @@ def diagnostic(step, status=None, doc=None):
     with os.fdopen(fd, 'a') as f: f.write(json.dumps(row) + '\n')
 
 class AuthError(Exception): pass
+
+class DirectoryWakeup:
+    """Wake immediately for a game refresh request, otherwise sleep 30 seconds."""
+    def __init__(self, directory):
+        self.fd = None; self.queue = None
+        try:
+            self.fd = os.open(directory, os.O_RDONLY)
+            self.queue = select.kqueue()
+            self.queue.control([select.kevent(self.fd, filter=select.KQ_FILTER_VNODE,
+                flags=select.KQ_EV_ADD | select.KQ_EV_CLEAR,
+                fflags=select.KQ_NOTE_WRITE | select.KQ_NOTE_RENAME | select.KQ_NOTE_DELETE)], 0, 0)
+        except (OSError, AttributeError): self.close()
+
+    def wait(self, timeout=30):
+        if self.queue is None: time.sleep(min(timeout, 2)); return
+        try: self.queue.control(None, 1, timeout)
+        except OSError: self.close(); time.sleep(2)
+
+    def close(self):
+        if self.queue is not None: self.queue.close(); self.queue = None
+        if self.fd is not None: os.close(self.fd); self.fd = None
+
+    def __del__(self): self.close()
+
+def refresh_runtime():
+    """Apply bundled Python helper updates without setup or touching game DLLs."""
+    runtime = HOME/'runtime'
+    if ROOT == runtime.resolve(): return
+    # Only the signed app's helper directory supplies these files. Development
+    # and test invocations must not install themselves into the user's profile.
+    if ROOT.parent.name != 'Resources' or ROOT.parent.parent.name != 'Contents': return
+    changed = False
+    pending = HOME/'runtime-restart-pending'
+    with open(HOME/'runtime-update.lock','a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        for name in ('bridge.py','diagnostics.py','localization.py','session_watch.py'):
+            source = ROOT/name; dest = runtime/name
+            data = source.read_bytes()
+            if not dest.exists() or dest.read_bytes() != data:
+                if dest.exists(): atomic(runtime/(name+'.previous'),dest.read_bytes())
+                atomic(dest,data); changed = True
+        source = ROOT.parent/'scripts/game_process.py'
+        if source.exists(): atomic(runtime/'game_process.py',source.read_bytes())
+        if changed: atomic(pending,b'1')
+    if pending.exists():
+        from session_watch import rows, SHIPPING
+        # A running game keeps its existing auth daemon; new requests remain
+        # compatible. The updated service is used on the next idle launch.
+        if not any(r[2] in SHIPPING for r in rows().values()):
+            result = subprocess.run(['/bin/launchctl','kickstart','-k','gui/'+str(os.getuid())+'/org.dungeons-crossover.auth'],
+                                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            if result.returncode == 0: pending.unlink(missing_ok=True)
 
 def keychain(operation, secret=None):
     helper = HOME / 'runtime/keychain'
@@ -239,6 +292,7 @@ def serve(bottle, allow_interactive):
                 else: raise AuthError('sign-in required')
         except AuthError:
             ready('sign-in-required'); return
+        wake = DirectoryWakeup(HOME)
         ready('ready'); last_attempt = 0; last_heartbeat = time.time()
         while not (HOME/'signed-out').exists():
             meta = session_meta()
@@ -271,7 +325,7 @@ def serve(bottle, allow_interactive):
                 except AuthError: diagnostic('silent-renewal-failed')
             for response in HOME.glob('refresh-*.res'):
                 if now-response.stat().st_mtime > 120: response.unlink(missing_ok=True)
-            time.sleep(0.2)
+            wake.wait(30)
         ready('signed-out')
 
 def sign_out():
@@ -286,6 +340,7 @@ def sign_out():
 
 def launch(bottle):
     if cancelled: raise AuthError('launch cancelled')
+    refresh_runtime()
     diagnostics.record(HOME,'launch_started',{'outcome':'started'})
     status = HOME/'status.json'
     active = False
@@ -323,6 +378,14 @@ def launch(bottle):
     if cancelled: raise AuthError('launch cancelled')
     settings = json.loads((HOME/'settings.json').read_text())
     command,working_directory=launch_command(settings,bottle)
+    from session_watch import steam_was_running
+    bottle_path = Path.home()/'Library/Application Support/CrossOver/Bottles'/bottle
+    owned = settings.get('store','steam') == 'steam' and not steam_was_running(bottle_path)
+    watcher = [sys.executable,'-I','-B',str(ROOT/'session_watch.py'),
+               '--bottle',bottle,'--game',settings['game']]
+    if owned: watcher.append('--owned-steam')
+    subprocess.Popen(watcher,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL,start_new_session=True)
     subprocess.Popen(command,cwd=working_directory,
                      stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
     diagnostics.record(HOME,'launch_requested',{'outcome':'success','store':settings.get('store','steam'),'app_version':settings.get('app_version')})

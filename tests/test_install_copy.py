@@ -24,7 +24,8 @@ class CopyInstallationTests(unittest.TestCase):
         self.bottle = self.user/'Library/Application Support/CrossOver/Bottles/Test'
         self.source = Path(self.temp.name)/'source'
         for name in ('build/keychain','build/signin-ui.exe','build/xgameruntime.dll','build/XCurl.dll',
-                     'helper/bridge.py','helper/diagnostics.py','helper/localization.py'):
+                     'helper/bridge.py','helper/diagnostics.py','helper/localization.py',
+                     'helper/session_watch.py','scripts/game_process.py'):
             file = self.source/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic build fixture')
         env = self.home/'python/bin/python';env.parent.mkdir(parents=True);env.write_bytes(b'not executed')
         (self.source/'localization').mkdir()

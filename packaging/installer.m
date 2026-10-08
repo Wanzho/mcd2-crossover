@@ -92,6 +92,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         || [saved[@"app_version"] isEqualToString:@"0.2.1"]
         || [saved[@"app_version"] isEqualToString:@"0.1.2"]
         || [saved[@"app_version"] isEqualToString:@"0.1.3"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.4"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
@@ -466,7 +467,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     NSString *bottle = settings()[@"bottle"];
     if (![bottle isKindOfClass:NSString.class]) { [self showSetup:YES]; return; }
     [self run:command executable:[support stringByAppendingPathComponent:@"python/bin/python"]
-        arguments:@[@"-I",@"-B",[support stringByAppendingPathComponent:@"runtime/bridge.py"],command,@"--bottle",bottle]];
+        arguments:@[@"-I",@"-B",[resources stringByAppendingPathComponent:@"helper/bridge.py"],command,@"--bottle",bottle]];
 }
 - (void)run:(NSString *)operation executable:(NSString *)executable arguments:(NSArray *)arguments {
     self.working = YES; self.cancelling = NO; self.operation = operation;

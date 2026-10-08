@@ -6,13 +6,13 @@ Repairs Steam startup, runtime dependencies, networking and Microsoft/Xbox sign-
 
 <img width="588" height="504" alt="Screenshot 2026-10-01 at 01 04 03" src="https://github.com/user-attachments/assets/46ba1909-937e-4134-93e9-4b90c623c628" />
 
-**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.3)**
+**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.5)**
 
 ## Install
 
 Install CrossOver, Windows Steam and Minecraft Dungeons II first. Open Steam and sign in at least once.
 
-1. Download **MCD2-Crossover-0.1.3-arm64.dmg** under **Assets** on the download page.
+1. Download **MCD2-Crossover-0.1.5-arm64.dmg** under **Assets** on the download page.
 2. Open it and drag **MCD2 Crossover** into **Applications**.
 3. Quit the game, then open **MCD2 Crossover** from Applications.
 If macOS blocks it, approve it in **System Settings → Privacy & Security**. 
@@ -40,6 +40,17 @@ Your Microsoft sign-in stays saved. The previous bottle keeps its repair; the ap
 ## Sign out or switch accounts
 
 Quit the game, open **MCD2 Crossover**, and click **Sign Out**. This removes the saved Microsoft credential and local session. Click **Play** to sign in again with the account you want.
+
+## Important update: 0.1.5
+
+This release addresses background battery drain after a game session. All users should update.
+
+- Launching with **Play** now watches that game session. If its window is gone for a minute but its process remains, the launcher requests that process to end. Minimized or hidden windows remain running.
+- When the launcher started Steam, it closes that Steam session after the game ends, then stops the idle bottle's remaining services. Steam that was already open, another Windows app, and active downloads are preserved.
+- The sign-in service now waits for requests instead of checking the disk five times every second. Saved accounts and silent renewal remain available.
+- **Check for Updates…** can download, verify and replace future versions inside the app. Versions without this menu need this one manual upgrade.
+
+Session cleanup applies to games launched with this app's **Play** button. It does not change CrossOver's controller settings or reduce rendering load while a game is running.
 
 ## New in 0.1.3
 

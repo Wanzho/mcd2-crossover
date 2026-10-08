@@ -18,7 +18,7 @@ Build the app normally and create its ZIP using `ditto -c -k --keepParent`. Put 
 
 ```sh
 python3 scripts/make_update_feed.py --app '/path/MCD2 Crossover.app' \
-  --archive /path/release/MCD2-Crossover-0.1.4-arm64.zip \
+  --archive /path/release/MCD2-Crossover-0.1.5-arm64.zip \
   --notes /path/release/notes.txt --signing-tool /path/to/sign_update
 ```
 
