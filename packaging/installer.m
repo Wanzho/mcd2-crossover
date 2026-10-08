@@ -2,6 +2,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "localization.h"
 #import "account.h"
+#import "CrossoverUpdater.h"
 
 static NSString *resources;
 static NSString *support;
@@ -79,6 +80,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     support = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/DungeonsCrossOver"];
     self.bottleRoot = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/CrossOver/Bottles"];
     MCD2ConfigureLocalization(resources,[support stringByAppendingPathComponent:@"ui-language"]);
+    __weak MCD2App *weakSelf = self;
+    [[CrossoverUpdater shared] startWithBusyCheck:^BOOL { return weakSelf.working; }];
     [self buildMenu];
     self.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,700,600) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:NO];
     self.window.contentMinSize = NSMakeSize(660,420);
@@ -88,6 +91,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     BOOL ready = ([saved[@"app_version"] isEqualToString:@"0.2.0"]
         || [saved[@"app_version"] isEqualToString:@"0.2.1"]
         || [saved[@"app_version"] isEqualToString:@"0.1.2"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.3"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
@@ -104,6 +108,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     NSMenuItem *application = [NSMenuItem new]; [main addItem:application];
     NSMenu *appMenu = [NSMenu new]; application.submenu = appMenu;
     NSMenuItem *about = [appMenu addItemWithTitle:L(@"About MCD2 Crossover") action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""]; about.target = NSApp;
+    [[CrossoverUpdater shared] addItemsToMenu:appMenu];
     [appMenu addItem:NSMenuItem.separatorItem];
     NSMenuItem *play = [appMenu addItemWithTitle:L(@"Play") action:@selector(play:) keyEquivalent:@"p"]; play.target = self;
     NSMenuItem *signout = [appMenu addItemWithTitle:L(@"Sign Out") action:@selector(signOut:) keyEquivalent:@""]; signout.target = self;
@@ -406,10 +411,12 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)closeLicense:(NSButton *)sender { [self.window endSheet:sender.window]; }
 - (void)install:(id)sender {
+    if (![[CrossoverUpdater shared] allowsNewOperation]) return;
     self.launchAfterSetup = NO;
     [self startSetup:NO];
 }
 - (void)startSetup:(BOOL)override {
+    if (![[CrossoverUpdater shared] allowsNewOperation]) return;
     if (self.working || !self.setupMode || !self.primary.enabled) return;
     NSMutableArray *arguments = [@[@"-I",@"-B",[resources stringByAppendingPathComponent:@"scripts/install.py"],@"--bottle",self.bottles.titleOfSelectedItem,@"--game",self.gameCopy[@"executable"],@"--store",self.stores.indexOfSelectedItem == 1 ? @"launcher" : @"steam",@"--accept-gdk-license"] mutableCopy];
     if (override) [arguments addObject:@"--ignore-other-game-detection"];
@@ -443,7 +450,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if ([text containsString:@"checksum"] || [text containsString:@"dependency"] || [text containsString:@"CalledProcessError"]) return L(@"Dependency files could not be verified. Check your connection and try setup again.");
     return L(@"Couldn’t finish setup. Save the logs and try again.");
 }
-- (void)play:(id)sender { if (!self.working && !self.setupMode) [self bridge:@"launch"]; }
+- (void)play:(id)sender { if (![[CrossoverUpdater shared] allowsNewOperation]) return; if (!self.working && !self.setupMode) [self bridge:@"launch"]; }
 - (void)signOut:(id)sender { if (!self.working && !self.setupMode) [self bridge:@"sign-out"]; }
 - (void)stopGame:(id)sender {
     if (self.working || self.setupMode) return;
@@ -455,6 +462,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     }];
 }
 - (void)bridge:(NSString *)command {
+    if (![command isEqualToString:@"stop-game"] && ![[CrossoverUpdater shared] allowsNewOperation]) return;
     NSString *bottle = settings()[@"bottle"];
     if (![bottle isKindOfClass:NSString.class]) { [self showSetup:YES]; return; }
     [self run:command executable:[support stringByAppendingPathComponent:@"python/bin/python"]
@@ -626,6 +634,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     return YES;
 }
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    if ([[CrossoverUpdater shared] mustWaitBeforeQuitting]) return NSTerminateCancel;
     if (!self.working) return NSTerminateNow;
     if ([self.operation isEqualToString:@"launch"]) { self.quitAfterTask = YES; [self cancel:nil]; }
     return NSTerminateCancel;

@@ -3,6 +3,7 @@
 import argparse, hashlib, json, plistlib, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 from pathlib import Path
 from localize import native_resources
+from updater import dependency, settings as update_settings, embed as embed_updater
 
 ROOT=Path(__file__).resolve().parents[1]
 PYTHON_URL='https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.13.15%2B20260929-aarch64-apple-darwin-install_only_stripped.tar.gz'
@@ -44,7 +45,7 @@ def finder_layout(stage, python):
         store['READ ME.txt']['Iloc']=(320,315)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.3');p.add_argument('--gdk-archive',type=Path,required=True)
+    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.4');p.add_argument('--gdk-archive',type=Path,required=True)
     p.add_argument('--runtime-app',type=Path,help='Reuse the verified, pinned Python runtime from an existing local app without modifying it.')
     p.add_argument('--stage-only',action='store_true',help='Verify the signed app and save its stage without creating a DMG.')
     args=p.parse_args()
@@ -89,8 +90,10 @@ def main():
         'CFBundleDevelopmentRegion':'en','CFBundleLocalizations':[row['id'] for row in metadata['languages']],
         'CFBundleName':'MCD2 Crossover','CFBundleDisplayName':'MCD2 Crossover','CFBundleIconFile':'AppIcon.icns',
         'CFBundleVersion':args.version,'CFBundleShortVersionString':args.version,'CFBundlePackageType':'APPL','LSMinimumSystemVersion':'13.0',
-        'NSHighResolutionCapable':True}))
-    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
+        'NSHighResolutionCapable':True, **update_settings('mcd2')}))
+    sparkle=dependency(ROOT/'build/sparkle')
+    embed_updater(app,sparkle)
+    run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers','-F',sparkle,'-framework','Sparkle','-Wl,-rpath,@executable_path/../Frameworks',ROOT/'packaging/installer.m',ROOT/'packaging/CrossoverUpdater.m','-o',contents/'MacOS/installer'])
     shutil.copy2(ROOT/'assets/AppIcon.icns',resources/'AppIcon.icns')
     for folder,names in {'scripts':['install.py','startup.py','game_copy.py','game_process.py'],'helper':['bridge.py','diagnostics.py','localization.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
         dest=resources/folder;dest.mkdir()
@@ -104,7 +107,7 @@ def main():
     # This developer-only generator is unused by the helper. pip gives it an
     # absolute build-interpreter shebang, so leave it out of the runtime bundle.
     (resources/'python/bin/cffi-gen-src').unlink(missing_ok=True)
-    licenses=resources/'licenses';licenses.mkdir()
+    licenses=resources/'licenses';licenses.mkdir(exist_ok=True)
     shutil.copy2(ROOT/'LICENSE',licenses/'Dungeons-CrossOver-LICENSE.txt')
     if args.runtime_app:
         gdk_license=(args.runtime_app/'Contents/Resources/licenses/Microsoft-GDK-LICENSE.md').read_bytes()
@@ -132,9 +135,9 @@ def main():
         subprocess.run(['/usr/bin/xattr','-r','-d',attribute,str(app)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     if source_origin(args.version)!=origin:
         raise SystemExit('Tracked source changed during packaging. Start again from a clean commit.')
-    # Normalize nested signatures before recording their hashes. The second,
-    # outer-only seal includes the manifest without changing those binary bytes.
-    run(['/usr/bin/codesign','--force','--deep','--sign','-',app])
+    # Preserve vendor signatures on nested Sparkle helpers. Seal the outer app
+    # again after recording the bundled helper hashes.
+    run(['/usr/bin/codesign','--force','--sign','-',app])
     origin['bundled_build_sha256']={str(path.relative_to(resources)):hashlib.sha256(path.read_bytes()).hexdigest()
                                    for path in sorted((resources/'build').iterdir()) if path.is_file()}
     write_json(source_manifest,origin)

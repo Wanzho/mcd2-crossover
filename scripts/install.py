@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'helper'))
 import diagnostics
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
-VERSION = '0.1.3'
+VERSION = '0.1.4'
 CROSSOVER = Path('/Applications/CrossOver.app')
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
