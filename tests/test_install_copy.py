@@ -25,7 +25,7 @@ class CopyInstallationTests(unittest.TestCase):
         self.source = Path(self.temp.name)/'source'
         for name in ('build/keychain','build/signin-ui.exe','build/xgameruntime.dll','build/XCurl.dll',
                      'helper/bridge.py','helper/diagnostics.py','helper/localization.py',
-                     'helper/session_watch.py','scripts/game_process.py'):
+                     'helper/session_watch.py','scripts/game_process.py','scripts/crossover.py'):
             file = self.source/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic build fixture')
         env = self.home/'python/bin/python';env.parent.mkdir(parents=True);env.write_bytes(b'not executed')
         (self.source/'localization').mkdir()
@@ -34,7 +34,7 @@ class CopyInstallationTests(unittest.TestCase):
         self.stack = ExitStack()
         self.stack.enter_context(patch.object(install,'ROOT',self.source))
         self.stack.enter_context(patch.object(install,'HOME',self.home))
-        self.stack.enter_context(patch.object(install,'CROSSOVER',self.source))
+        self.stack.enter_context(patch.object(install,'crossover_app',return_value=self.source))
         self.stack.enter_context(patch.object(Path,'home',return_value=self.user))
         self.run = self.stack.enter_context(patch.object(install.subprocess,'run',return_value=subprocess.CompletedProcess([],0,stdout='',stderr='')))
         self.steam_stop = self.stack.enter_context(patch.object(install,'stop_steam'))

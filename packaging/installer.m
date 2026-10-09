@@ -3,6 +3,7 @@
 #import "localization.h"
 #import "account.h"
 #import "game_copy_native.h"
+#import "crossover_app.h"
 #import "runtime_preflight.h"
 #import "CrossoverUpdater.h"
 
@@ -80,6 +81,10 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 @property NSString *selectionError;
 @property NSString *runtimeError;
 @property BOOL setupAttempted;
+@property NSString *crossoverApp;
+@property NSString *crossoverPreferenceError;
+@property NSTextField *crossoverLabel;
+@property NSButton *chooseCrossoverButton;
 @property NSProgressIndicator *progress;
 @property NSString *bottleRoot;
 @property NSString *game;
@@ -102,6 +107,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     resources = NSBundle.mainBundle.resourcePath;
     support = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/DungeonsCrossOver"];
+    self.crossoverApp = MCD2FindCrossOver(support);
     self.runtimeError = MCD2PrepareEmbeddedRuntime(NSBundle.mainBundle.bundlePath, resources);
     self.bottleRoot = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/CrossOver/Bottles"];
     MCD2ConfigureLocalization(resources,[support stringByAppendingPathComponent:@"ui-language"]);
@@ -192,6 +198,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.setupMode = setup;
     self.setupAttempted = NO;
     self.accountLabel = nil;
+    self.crossoverLabel = nil; self.chooseCrossoverButton = nil;
     self.closeButton = nil;
     self.changeBottleButton = nil;
     self.choose = nil; self.gameLabel = nil; self.bottles = nil; self.stores = nil; self.license = nil; self.gameCopy = nil; self.gameSelection = nil;
@@ -229,6 +236,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         self.license = [NSButton checkboxWithTitle:L(@"I accept the Microsoft GDK license") target:self action:@selector(licenseChanged:)];
         [self.stack addArrangedSubview:self.license];
     } else {
+        [self addCrossOverSelectionToStack:self.stack];
         NSString *bottle = settings()[@"bottle"];
         self.changeBottleButton = [NSButton buttonWithTitle:L(@"Change Game Copy") target:self action:@selector(changeBottle:)];
         [self.stack addArrangedSubview:[self buttonRow:@[label([L(@"CrossOver bottle: ") stringByAppendingString:bottle ?: L(@"Not selected")],13,NSFontWeightMedium),self.changeBottleButton]]];
@@ -257,7 +265,43 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     [document layoutSubtreeIfNeeded];
     [self refreshRecording:nil];
 }
+- (void)addCrossOverSelectionToStack:(NSStackView *)stack {
+    self.crossoverLabel = label(@"",13,NSFontWeightRegular);
+    self.crossoverLabel.selectable = YES;
+    self.chooseCrossoverButton = [NSButton buttonWithTitle:@"Choose CrossOver…" target:self action:@selector(chooseCrossOver:)];
+    [stack addArrangedSubview:[self buttonRow:@[label(@"CrossOver App",13,NSFontWeightMedium),self.chooseCrossoverButton]]];
+    [stack addArrangedSubview:self.crossoverLabel];
+    [self refreshCrossOverLabel];
+}
+- (void)refreshCrossOverLabel {
+    self.crossoverLabel.stringValue = self.crossoverApp.length ? self.crossoverApp.stringByAbbreviatingWithTildeInPath : L(@"Not selected");
+}
+- (void)chooseCrossOver:(id)sender {
+    if (self.working) return;
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.title = @"Choose CrossOver";
+    panel.message = @"Select the CrossOver app you use for this game. Its name and location can be different.";
+    panel.allowedContentTypes = @[UTTypeApplicationBundle];
+    panel.canChooseFiles = YES; panel.canChooseDirectories = NO;
+    panel.treatsFilePackagesAsDirectories = NO; panel.allowsMultipleSelection = NO;
+    panel.directoryURL = [NSURL fileURLWithPath:self.crossoverApp.stringByDeletingLastPathComponent ?: @"/Applications"];
+    [panel beginSheetModalForWindow:self.selectionPanel ?: self.window completionHandler:^(NSModalResponse result) {
+        if (result != NSModalResponseOK) return;
+        self.crossoverApp = panel.URL.path.stringByResolvingSymlinksInPath;
+        self.crossoverPreferenceError = nil;
+        if (!MCD2CrossOverError(self.crossoverApp)) {
+            NSError *error = nil;
+            BOOL saved = [NSFileManager.defaultManager createDirectoryAtPath:support withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&error];
+            NSData *data = [NSJSONSerialization dataWithJSONObject:@{@"path":self.crossoverApp} options:0 error:&error];
+            if (saved) saved = [data writeToFile:[support stringByAppendingPathComponent:@"crossover-app.json"] options:NSDataWritingAtomic error:&error];
+            if (!saved) self.crossoverPreferenceError = [@"Could not save the CrossOver selection: " stringByAppendingString:error.localizedDescription ?: @"Unknown error"];
+        }
+        if (!self.setupMode) { [self showSetup:YES]; }
+        [self refreshCrossOverLabel]; [self licenseChanged:nil]; [self resizeCopySheet];
+    }];
+}
 - (void)addCopySelectionControlsToStack:(NSStackView *)stack {
+    [self addCrossOverSelectionToStack:stack];
     self.bottles = [NSPopUpButton new]; self.bottles.target = self; self.bottles.action = @selector(bottleChanged:); self.bottles.accessibilityLabel = L(@"CrossOver bottle");
     NSMutableArray *names = [NSMutableArray new];
     for (NSString *name in [NSFileManager.defaultManager contentsOfDirectoryAtPath:self.bottleRoot error:nil])
@@ -289,7 +333,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (BOOL)isSavedCopySelected {
     NSDictionary *saved = settings();
-    return [self.bottles.titleOfSelectedItem isEqual:saved[@"bottle"]]
+    return [self.crossoverApp.stringByResolvingSymlinksInPath isEqual:[(saved[@"crossover_app"] ?: @"/Applications/CrossOver.app") stringByResolvingSymlinksInPath]]
+        && [self.bottles.titleOfSelectedItem isEqual:saved[@"bottle"]]
         && [self.gameCopy[@"root"] isEqual:saved[@"game"]]
         && [self.gameCopy[@"binary"] isEqual:saved[@"binary"]]
         && [saved[@"store"] isEqual:(self.stores.indexOfSelectedItem == 1 ? @"launcher" : @"steam")];
@@ -302,7 +347,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 - (void)showCopySheet {
     if (self.working || self.setupMode || self.window.attachedSheet) return;
     NSMutableDictionary *state = [NSMutableDictionary new];
-    for (NSString *key in @[@"bottles",@"stores",@"gameLabel",@"status",@"choose",@"license",@"primary",@"secondary",@"closeButton",@"changeBottleButton",@"progress",@"game",@"gameSelection",@"gameCopy",@"setupMode",@"changingBottle"]) {
+    for (NSString *key in @[@"crossoverLabel",@"chooseCrossoverButton",@"bottles",@"stores",@"gameLabel",@"status",@"choose",@"license",@"primary",@"secondary",@"closeButton",@"changeBottleButton",@"progress",@"game",@"gameSelection",@"gameCopy",@"setupMode",@"changingBottle"]) {
         state[key] = [self valueForKey:key] ?: NSNull.null;
     }
     self.homeUIState = state;
@@ -349,6 +394,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     NSDictionary *state = self.homeUIState; self.homeUIState = nil;
     for (NSString *key in state) [self setValue:state[key] == NSNull.null ? nil : state[key] forKey:key];
     self.selectionLicenseAccepted = NO;
+    [self refreshCrossOverLabel];
 }
 - (void)commitCopy:(id)sender {
     if (self.working || !self.selectionPanel || !self.primary.enabled) return;
@@ -397,15 +443,15 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if (!self.setupMode || self.working) return;
     NSString *blocked = nil;
     if (self.runtimeError) blocked = self.runtimeError;
-    else if (!exists(@"/Applications/CrossOver.app"))
-        blocked = @"CrossOver was not found at /Applications/CrossOver.app. Move CrossOver there and use the name CrossOver.app, then reopen this app.";
+    else if (self.crossoverPreferenceError) blocked = self.crossoverPreferenceError;
+    else if (MCD2CrossOverError(self.crossoverApp)) blocked = MCD2CrossOverError(self.crossoverApp);
     else if (!self.bottles.numberOfItems)
         blocked = L(@"Install the game in a CrossOver bottle, then reopen this app.");
     else if (!self.gameCopy)
         blocked = self.selectionError ?: L(@"Game copy not found. Browse to its installed folder or Shipping.exe file.");
     else if (!self.selectionPanel && self.license.state != NSControlStateValueOn)
         blocked = @"Accept the Microsoft GDK license to enable Set Up.";
-    else if (!self.selectionPanel && self.changingBottle && [self.bottles.titleOfSelectedItem isEqual:settings()[@"bottle"]]
+    else if (!self.selectionPanel && self.changingBottle && [self isSavedCopySelected] && [self.bottles.titleOfSelectedItem isEqual:settings()[@"bottle"]]
         && [self.game isEqual:settings()[@"game"]]
         && (!settings()[@"binary"] || [self.gameCopy[@"binary"] isEqual:settings()[@"binary"]])
         && ((self.stores.indexOfSelectedItem == 1) == [settings()[@"store"] isEqualToString:@"launcher"]))
@@ -508,6 +554,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     }];
 }
 - (void)bridge:(NSString *)command {
+    NSString *crossoverError = self.crossoverPreferenceError ?: MCD2CrossOverError(self.crossoverApp);
+    if (crossoverError) { self.status.stringValue = crossoverError; return; }
     if (self.runtimeError) { self.status.stringValue = self.runtimeError; return; }
     if (![command isEqualToString:@"stop-game"] && ![[CrossoverUpdater shared] allowsNewOperation]) return;
     NSString *bottle = settings()[@"bottle"];
@@ -517,6 +565,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)run:(NSString *)operation executable:(NSString *)executable arguments:(NSArray *)arguments {
     self.working = YES; self.cancelling = NO; self.operation = operation;
+    self.chooseCrossoverButton.enabled = NO;
     self.primary.enabled = NO; self.bottles.enabled = NO; self.choose.enabled = NO; self.license.enabled = NO;
     self.changeBottleButton.enabled = NO;
     self.stores.enabled = NO;
@@ -529,7 +578,11 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         : [operation isEqualToString:@"launch"] ? L(@"Checking sign-in… If a code window appears, finish signing in and leave it open.")
         : [operation isEqualToString:@"stop-game"] ? L(@"Closing the stuck game…") : L(@"Removing your saved Microsoft sign-in…");
     [self resizeCopySheet];
-    NSTask *task = [NSTask new]; self.task = task; task.executableURL = [NSURL fileURLWithPath:executable]; task.arguments = arguments;
+    NSTask *task = [NSTask new]; self.task = task;
+    NSMutableDictionary *environment = [NSProcessInfo.processInfo.environment mutableCopy];
+    if (self.crossoverApp.length) environment[@"MCD2_CROSSOVER_APP"] = self.crossoverApp;
+    task.environment = environment;
+    task.executableURL = [NSURL fileURLWithPath:executable]; task.arguments = arguments;
     NSPipe *pipe = [NSPipe pipe]; task.standardOutput = pipe; task.standardError = pipe;
     NSError *error;
     if (![task launchAndReturnError:&error]) { [self finished:1 output:L(@"Couldn’t start. Choose Repair Setup from the MCD2 Crossover menu, or download the app again.")]; return; }
@@ -545,6 +598,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if (step) [self recordEvent:step outcome:self.cancelling ? @"cancelled" : code ? @"failed" : @"success"];
     if (self.quitAfterTask) { [NSApp terminate:nil]; return; }
     if ([self.operation isEqualToString:@"setup"] && code == 0) { BOOL launch = self.launchAfterSetup; self.launchAfterSetup = NO; [self showSetup:NO]; self.status.stringValue = L(@"Setup complete. Press Play to open the game."); if (launch) [self play:nil]; return; }
+    self.chooseCrossoverButton.enabled = YES;
     self.primary.enabled = !self.setupMode; self.secondary.enabled = YES;
     self.closeButton.enabled = YES;
     self.changeBottleButton.enabled = YES;

@@ -111,7 +111,7 @@ class StartupTests(unittest.TestCase):
                 if args[0] == '/usr/bin/curl':
                     Path(args[-1]).write_bytes(b'MZ'+b'\0'*1000000)
                 else:
-                    self.assertEqual(args[0], s.WINE)
+                    self.assertEqual(args[0], s.wine())
                     self.assertNotIn('/quiet', args)
                     runtime(b)
                 return subprocess.CompletedProcess(args, 0)

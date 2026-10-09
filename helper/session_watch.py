@@ -19,9 +19,9 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'scripts'))
+from crossover import wine
 from game_process import _open_files, _bottle_file, _other_bottle_file, _same_file
 
-WINE = '/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine'
 HOME = Path.home() / 'Library/Application Support/DungeonsCrossOver'
 SYSTEM = {'services.exe', 'winedevice.exe', 'plugplay.exe', 'svchost.exe',
           'explorer.exe', 'rpcss.exe', 'conhost.exe', 'wineboot.exe', 'winewrapper.exe', 'wuauserv.exe'}
@@ -69,7 +69,7 @@ def bottle_rows(bottle, snapshot):
         if paths is None:
             if pid in rows(): return None
             continue
-        vendor = Path(WINE).parent.parent / 'lib/wine/x86_64-windows' / row[2]
+        vendor = Path(wine()).parent.parent / 'lib/wine/x86_64-windows' / row[2]
         if row[2] in SYSTEM and vendor in paths: continue
         if any(_bottle_file(p, bottle) for p in paths): result[pid] = row
         elif not any(_other_bottle_file(p, bottle) for p in paths): return None
@@ -266,7 +266,7 @@ def cleanup(bottle, game, owned, helpers=None):
     steam = {p: r for p, r in selected.items() if r[2] == 'steam.exe'}
     if len(steam) > 1: return
     if steam:
-        subprocess.Popen([WINE, '--bottle', bottle.name, '--no-wait', '--debugmsg', '-all',
+        subprocess.Popen([wine(), '--bottle', bottle.name, '--no-wait', '--debugmsg', '-all',
                           r'C:\Program Files (x86)\Steam\steam.exe', '-shutdown'],
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         event('owned_steam_shutdown_requested')
@@ -279,7 +279,7 @@ def cleanup(bottle, game, owned, helpers=None):
         # No Windows application remains. Use the selected prefix only; do not
         # stop controllers while Steam, a game, or any other Windows app is open.
         env = os.environ.copy(); env['WINEPREFIX'] = str(bottle)
-        subprocess.run([str(Path(WINE).with_name('wineserver')), '-k'], env=env,
+        subprocess.run([str(Path(wine()).with_name('wineserver')), '-k'], env=env,
                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         event('idle_bottle_stopped'); return
     # Wine can keep an app-owned Steam client waiting after its game is gone.
@@ -291,7 +291,7 @@ def cleanup(bottle, game, owned, helpers=None):
         or downloads_pending(bottle, game) or cloud_busy(bottle)):
         event('steam_shutdown_incomplete'); return
     env = os.environ.copy(); env['WINEPREFIX'] = str(bottle)
-    subprocess.run([str(Path(WINE).with_name('wineserver')), '-k'], env=env,
+    subprocess.run([str(Path(wine()).with_name('wineserver')), '-k'], env=env,
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10, check=True)
     event('idle_owned_session_stopped')
 

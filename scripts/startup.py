@@ -6,7 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
-WINE = '/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine'
+from crossover import wine
 APP_ID = '1912410'
 LAUNCHER = 'MCD2CrossoverLaunch.cmd'
 VC_URL = 'https://aka.ms/vc14/vc_redist.x64.exe'
@@ -68,7 +68,7 @@ def ensure_vc(bottle, name, runtime, game=None):
             if not bundled or not bundled.is_file():
                 raise RuntimeError('Visual C++ could not be downloaded and the bundled installer is missing. Check your connection and try setup again.') from None
             executable = bundled
-        result = subprocess.run([WINE, '--bottle', name, '--wait', '--debugmsg', '-all',
+        result = subprocess.run([wine(), '--bottle', name, '--wait', '--debugmsg', '-all',
                                  str(executable)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if result.returncode not in (0, 3010) or not vc_installed(bottle):
             raise RuntimeError('Visual C++ setup did not finish. Complete Microsoft’s installer, then try setup again.')
@@ -200,7 +200,7 @@ def steam_running(bottle):
 def stop_steam(bottle, name):
     if not steam_running(bottle):
         return
-    subprocess.Popen([WINE, '--bottle', name, '--debugmsg', '-all',
+    subprocess.Popen([wine(), '--bottle', name, '--debugmsg', '-all',
                       r'C:\Program Files (x86)\Steam\steam.exe', '-shutdown'],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     deadline = time.monotonic() + 45

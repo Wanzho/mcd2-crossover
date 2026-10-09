@@ -11,6 +11,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed, decode_dss_signature
 sys.path.insert(0,str(Path(__file__).resolve().parent))
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent / 'scripts'))
+from crossover import wine
 import diagnostics
 import localization
 
@@ -247,7 +249,7 @@ def interactive(bottle):
     url = start.get('verification_uri') or 'https://www.microsoft.com/link'
     if urllib.parse.urlsplit(url).hostname not in {'www.microsoft.com','microsoft.com','login.live.com'}:
         raise AuthError('unexpected sign-in address')
-    ui = subprocess.Popen(['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
+    ui = subprocess.Popen([wine(),
                            '--bottle',bottle,'--debugmsg','-all',str(HOME/'runtime/signin-ui.exe')],
                           stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     ui.stdin.write(localization.prompt_payload(url,start['user_code'],HOME));ui.stdin.flush()
@@ -393,7 +395,7 @@ def launch(bottle):
 
 def launch_command(settings,bottle):
     """Choose a launch route without changing authentication or entitlement."""
-    command=['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
+    command=[wine(),
              '--bottle',bottle,'--debugmsg','-all']
     store=settings.get('store','steam')
     if store=='steam':
@@ -439,7 +441,7 @@ def main():
         executable=selected.get('game_exe','Dungeons-Win64-Shipping.exe').replace('\\','/').rsplit('/',1)[-1]
         if executable not in {'Dungeons-Win64-Shipping.exe','Dungeons-WinGDK-Shipping.exe'}:
             raise AuthError('unknown game executable')
-        subprocess.run(['/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine',
+        subprocess.run([wine(),
                         '--bottle',args.bottle,'--wait','--debugmsg','-all','taskkill.exe',
                         '/F','/IM',executable,'/T'],
                        stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True)

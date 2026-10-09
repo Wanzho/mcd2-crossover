@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT/'helper'))
 import diagnostics
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
 VERSION = '0.1.5.1'
-CROSSOVER = Path('/Applications/CrossOver.app')
+from crossover import crossover_app
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
     'xgameruntime-adapter-thunks.dll':'862236063d4872f43435384eb4030dfa4b1fb6fbe91fe93969557de18c5f9601',
@@ -62,7 +62,7 @@ def main():
     selected=args.game or bottle/'drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II'
     copy=inspect_copy(selected,args.store)
     game=Path(copy['root']);binary=Path(copy['binary']);store=copy['store']
-    if not CROSSOVER.exists():raise SystemExit('Install CrossOver in Applications first.')
+    selected_crossover = crossover_app()
     def check_running(shared_steam=False):
         require_idle(copy['executable'], bottle, shared_steam=shared_steam,
                      ignore_other=args.ignore_other_game_detection)
@@ -76,6 +76,7 @@ def main():
         print('The selected game is ready for installation.');return
     diagnostics.record(HOME,'setup_started',{'outcome':'started','store':store,'app_version':VERSION})
     HOME.mkdir(parents=True,mode=0o700,exist_ok=True);os.chmod(HOME,0o700)
+    write(HOME/'crossover-app.json',json.dumps({'path':str(selected_crossover)}).encode())
     runtime=HOME/'runtime';runtime.mkdir(mode=0o700,exist_ok=True)
     if not args.prepare_only:
         ensure_vc(bottle, args.bottle, runtime, game)
@@ -84,7 +85,7 @@ def main():
         backup=HOME/'backups'/str(time.time_ns());backup.mkdir(parents=True,mode=0o700)
         # Keep the previous helper/settings too, before updating them. Credentials
         # are not exported into the backup or release.
-        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','runtime/session_watch.py','runtime/game_process.py','settings.json','installation.json'):
+        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','runtime/session_watch.py','runtime/game_process.py','runtime/crossover.py','settings.json','installation.json'):
             previous=HOME/relative
             if previous.is_file():
                 dest=backup/'helper'/relative;dest.parent.mkdir(parents=True,exist_ok=True)
@@ -115,6 +116,7 @@ def main():
         write(runtime/name,(ROOT/'build'/name).read_bytes(),True)
     write(runtime/'bridge.py',(ROOT/'helper/bridge.py').read_bytes())
     write(runtime/'session_watch.py',(ROOT/'helper/session_watch.py').read_bytes())
+    write(runtime/'crossover.py',(ROOT/'scripts/crossover.py').read_bytes())
     write(runtime/'game_process.py',(ROOT/'scripts/game_process.py').read_bytes())
     write(runtime/'diagnostics.py',(ROOT/'helper/diagnostics.py').read_bytes())
     write(runtime/'localization.py',(ROOT/'helper/localization.py').read_bytes())
@@ -129,7 +131,7 @@ def main():
         else:subprocess.run([sys.executable,'-m','venv',str(env)],check=True)
     check=subprocess.run([str(env/'bin/python'),'-c','from cryptography.hazmat.primitives.asymmetric import ec; ec.generate_private_key(ec.SECP256R1())'],capture_output=True)
     if check.returncode:subprocess.run([str(env/'bin/python'),'-m','pip','install','-r',str(ROOT/'helper/requirements.txt')],check=True)
-    settings={'bottle':args.bottle,'game':str(game),'store':store,
+    settings={'crossover_app':str(selected_crossover),'bottle':args.bottle,'game':str(game),'store':store,
               'game_exe':windows_path(Path(copy['executable']),bottle),'binary':str(binary),
               'launcher':'steam' if store=='steam' else 'direct',
               'experimental':copy['experimental']}
