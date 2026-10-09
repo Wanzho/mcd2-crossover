@@ -125,6 +125,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         || [saved[@"app_version"] isEqualToString:@"0.1.3"]
         || [saved[@"app_version"] isEqualToString:@"0.1.4"]
         || [saved[@"app_version"] isEqualToString:@"0.1.5"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.5.1"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
