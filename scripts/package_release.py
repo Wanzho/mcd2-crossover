@@ -44,7 +44,7 @@ def finder_layout(stage, python):
         store['Applications']['Iloc']=(460,160)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--version',default='0.5.1');p.add_argument('--gdk-archive',type=Path,required=True)
+    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.5.1');p.add_argument('--gdk-archive',type=Path,required=True)
     p.add_argument('--runtime-app',type=Path,help='Reuse the verified, pinned Python runtime from an existing local app without modifying it.')
     p.add_argument('--stage-only',action='store_true',help='Verify the signed app and save its stage without creating a DMG.')
     args=p.parse_args()
