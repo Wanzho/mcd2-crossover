@@ -21,6 +21,25 @@ static NSDictionary *settings(void) {
 }
 static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManager fileExistsAtPath:path]; }
 
+// Preserve the disabled appearance while letting an attempted click explain why.
+@interface MCD2SetupButton : NSButton
+@property (copy) void (^blockedAttempt)(void);
+@end
+@implementation MCD2SetupButton
+- (void)mouseDown:(NSEvent *)event {
+    if (!self.enabled && self.blockedAttempt) { self.blockedAttempt(); return; }
+    [super mouseDown:event];
+}
+- (void)performClick:(id)sender {
+    if (!self.enabled && self.blockedAttempt) { self.blockedAttempt(); return; }
+    [super performClick:sender];
+}
+- (BOOL)accessibilityPerformPress {
+    if (!self.enabled && self.blockedAttempt) { self.blockedAttempt(); return YES; }
+    return [super accessibilityPerformPress];
+}
+@end
+
 @interface MCD2DocumentView : NSView
 @end
 @implementation MCD2DocumentView
@@ -60,6 +79,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 @property NSDictionary *gameCopy;
 @property NSString *selectionError;
 @property NSString *runtimeError;
+@property BOOL setupAttempted;
 @property NSProgressIndicator *progress;
 @property NSString *bottleRoot;
 @property NSString *game;
@@ -170,6 +190,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if (self.selectionPanel) [self dismissCopySheet];
     if (!setup) self.changingBottle = NO;
     self.setupMode = setup;
+    self.setupAttempted = NO;
     self.accountLabel = nil;
     self.closeButton = nil;
     self.changeBottleButton = nil;
@@ -217,7 +238,9 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.status.accessibilityLabel = L(@"Status"); [self.stack addArrangedSubview:self.status];
     self.progress = [NSProgressIndicator new]; self.progress.style = NSProgressIndicatorStyleBar; self.progress.indeterminate = YES; self.progress.hidden = YES; [self.stack addArrangedSubview:self.progress];
     self.secondary = [NSButton buttonWithTitle:setup ? L(@"Cancel") : L(@"Sign Out") target:self action:setup ? @selector(cancel:) : @selector(signOut:)];
-    self.primary = [NSButton buttonWithTitle:setup ? L(@"Set Up") : L(@"Play") target:self action:setup ? @selector(install:) : @selector(play:)]; self.primary.keyEquivalent = @"\r";
+    self.primary = [MCD2SetupButton buttonWithTitle:setup ? L(@"Set Up") : L(@"Play") target:self action:setup ? @selector(install:) : @selector(play:)]; self.primary.keyEquivalent = @"\r";
+    __weak MCD2App *weakSelf = self;
+    ((MCD2SetupButton *)self.primary).blockedAttempt = ^{ [weakSelf explainBlockedSetup]; };
     self.secondary.keyEquivalent = setup ? @"\e" : @"";
     NSView *actions = [NSView new]; self.primary.translatesAutoresizingMaskIntoConstraints = NO; self.secondary.translatesAutoresizingMaskIntoConstraints = NO;
     [actions addSubview:self.primary]; [actions addSubview:self.secondary]; [self.stack addArrangedSubview:actions];
@@ -230,8 +253,6 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     for (NSView *view in self.stack.arrangedSubviews) [view.widthAnchor constraintEqualToAnchor:self.stack.widthAnchor].active = YES;
     if (setup) {
         [self selectSavedCopy];
-        if (!self.bottles.numberOfItems) self.status.stringValue = L(@"Install the game in a CrossOver bottle, then reopen this app.");
-        if (!exists(@"/Applications/CrossOver.app")) self.status.stringValue = L(@"Install CrossOver in Applications, then reopen this app.");
     }
     [document layoutSubtreeIfNeeded];
     [self refreshRecording:nil];
@@ -285,7 +306,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         state[key] = [self valueForKey:key] ?: NSNull.null;
     }
     self.homeUIState = state;
-    self.setupMode = YES; self.changingBottle = YES;
+    self.setupMode = YES; self.changingBottle = YES; self.setupAttempted = NO;
     self.closeButton = nil; self.changeBottleButton = nil;
     NSPanel *panel = [[NSPanel alloc] initWithContentRect:NSMakeRect(0,0,650,340) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
     panel.title = L(@"Change Game Copy"); self.selectionPanel = panel;
@@ -306,7 +327,9 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.progress = [NSProgressIndicator new]; self.progress.style = NSProgressIndicatorStyleBar; self.progress.indeterminate = YES; self.progress.hidden = YES;
     [stack addArrangedSubview:self.progress];
     self.secondary = [NSButton buttonWithTitle:L(@"Cancel") target:self action:@selector(cancel:)]; self.secondary.keyEquivalent = @"\e";
-    self.primary = [NSButton buttonWithTitle:L(@"Done") target:self action:@selector(commitCopy:)]; self.primary.keyEquivalent = @"\r";
+    self.primary = [MCD2SetupButton buttonWithTitle:L(@"Done") target:self action:@selector(commitCopy:)]; self.primary.keyEquivalent = @"\r";
+    __weak MCD2App *weakSelf = self;
+    ((MCD2SetupButton *)self.primary).blockedAttempt = ^{ [weakSelf explainBlockedSetup]; };
     NSStackView *actions = [NSStackView stackViewWithViews:@[[NSView new],self.secondary,self.primary]];
     actions.orientation = NSUserInterfaceLayoutOrientationHorizontal; actions.spacing = 12; actions.alignment = NSLayoutAttributeCenterY;
     for (NSButton *button in @[self.secondary,self.primary]) {
@@ -359,11 +382,16 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.gameCopy = [self inspectCopy:self.gameSelection ?: self.game store:self.stores.indexOfSelectedItem == 1 ? @"launcher" : @"steam"];
     BOOL valid = self.gameCopy != nil;
     if (valid) self.game = self.gameCopy[@"root"];
-    self.gameLabel.stringValue = valid ? [L(@"Game folder: ") stringByAppendingString:[self.game stringByAbbreviatingWithTildeInPath]] : L(@"Game copy not found. Browse to its installed folder or Shipping.exe file.");
+    self.gameLabel.stringValue = [L(@"Game folder: ") stringByAppendingString:[(self.gameSelection ?: self.game ?: @"—") stringByAbbreviatingWithTildeInPath]];
     if (valid) self.status.stringValue = self.stores.indexOfSelectedItem == 1 ? L(@"Experimental: requires a Launcher-owned copy. Windows Store licensing may prevent it from running in CrossOver.") : L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish.");
     [self recordEvent:@"copy_checked" outcome:valid ? @"ready" : @"failed"];
     [self licenseChanged:nil];
     [self resizeCopySheet];
+}
+- (void)explainBlockedSetup {
+    if (!self.setupMode || self.working) return;
+    self.setupAttempted = YES;
+    [self licenseChanged:nil];
 }
 - (void)licenseChanged:(id)sender {
     if (!self.setupMode || self.working) return;
@@ -383,7 +411,9 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         && ((self.stores.indexOfSelectedItem == 1) == [settings()[@"store"] isEqualToString:@"launcher"]))
         blocked = @"This game copy is already selected. Choose another copy or click Cancel.";
     self.primary.enabled = blocked == nil;
-    self.status.stringValue = blocked ?: (self.stores.indexOfSelectedItem == 1 ? L(@"Experimental: requires a Launcher-owned copy. Windows Store licensing may prevent it from running in CrossOver.") : L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish."));
+    self.status.stringValue = (self.setupAttempted ? blocked : nil) ?: (self.stores.indexOfSelectedItem == 1 ? L(@"Experimental: requires a Launcher-owned copy. Windows Store licensing may prevent it from running in CrossOver.") : L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish."));
+    if (self.selectionPanel && self.setupAttempted && blocked) self.status.hidden = NO;
+    [self resizeCopySheet];
 }
 - (void)storeChanged:(id)sender { [self updateGame]; }
 - (NSDictionary *)inspectCopy:(NSString *)path store:(NSString *)store {
@@ -425,6 +455,9 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)closeLicense:(NSButton *)sender { [self.window endSheet:sender.window]; }
 - (void)install:(id)sender {
+    if (self.working) return;
+    [self explainBlockedSetup];
+    if (!self.primary.enabled) return;
     if (![[CrossoverUpdater shared] allowsNewOperation]) return;
     self.launchAfterSetup = NO;
     [self startSetup:NO];
