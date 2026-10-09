@@ -6,17 +6,17 @@ Repairs Steam startup, runtime dependencies, networking and Microsoft/Xbox sign-
 
 <img width="588" height="504" alt="Screenshot 2026-10-01 at 01 04 03" src="https://github.com/user-attachments/assets/46ba1909-937e-4134-93e9-4b90c623c628" />
 
-**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.5)**
+**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.6)**
 
 ## Install
 
 Install CrossOver, Windows Steam and Minecraft Dungeons II first. Open Steam and sign in at least once.
 
-1. Download **MCD2-Crossover-0.1.5-arm64.dmg** under **Assets** on the download page.
+1. Download **MCD2-Crossover-0.1.6-arm64.dmg** under **Assets** on the download page.
 2. Open it and drag **MCD2 Crossover** into **Applications**.
 3. Quit the game, then open **MCD2 Crossover** from Applications.
 If macOS blocks it, approve it in **System Settings → Privacy & Security**. 
-4. Choose your Steam bottle, read the Microsoft license and click **Set Up**. Setup restarts Steam. If Visual C++ is missing, finish the Microsoft installer that opens.
+4. Choose your Steam bottle, read the Microsoft license and click **Set Up**. If CrossOver isn't in Applications or has another name, click **Choose CrossOver…** and select it. If **Set Up** stays greyed out, click it anyway to see what's missing. Setup restarts Steam. If Visual C++ is missing, finish the Microsoft installer that opens.
 5. Click **Play**. If a Microsoft code window appears, complete sign-in and leave that small window open until it closes. Click the link or code to copy it.
 
 No Terminal commands, Python install or build tools needed. Setup backs up replaced files and leaves your saves and controller mods alone.
@@ -41,6 +41,17 @@ Your Microsoft sign-in stays saved. The previous bottle keeps its repair; the ap
 
 Quit the game, open **MCD2 Crossover**, and click **Sign Out**. This removes the saved Microsoft credential and local session. Click **Play** to sign in again with the account you want.
 
+## What's new in 0.1.6
+
+This release fixes first-time setup for people whose **Set Up** button stayed greyed out.
+
+- **Choose CrossOver…** lets setup use CrossOver from any folder or under any name. The app remembers your choice for setup, Play, sign-in and session cleanup. It only accepts CrossOver itself (bundle ID `com.codeweavers.CrossOver`) with its Wine executable.
+- Clicking a greyed-out **Set Up** now tells you what's blocking it, such as a missing CrossOver, game folder or license tick.
+- The game folder check no longer depends on the bundled Python, and setup now works when macOS has quarantined the app's runtime after a download.
+- Existing 0.1.5 setups update in the app with **Check for Updates…** and don't need to run setup again.
+
+Gameplay with the new CrossOver picker hasn't been tested yet.
+
 ## Important update: 0.1.5
 
 This release addresses background battery drain after a game session. All users should update.
@@ -55,6 +66,8 @@ Session cleanup applies to games launched with this app's **Play** button. It do
 ## Troubleshooting
 
 Still having trouble? [Open an issue here](https://github.com/Wanzho/mcd2-crossover/issues/new/choose).
+
+If **Set Up** is greyed out, click it to see the reason.
 
 Open **Troubleshooting…**, click **Start Recording** and reproduce the problem. Click **Save Logs…** and attach the ZIP to the issue. Setup and sign-in problems can be recorded with the game closed.
 
