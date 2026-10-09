@@ -2,6 +2,8 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "localization.h"
 #import "account.h"
+#import "game_copy_native.h"
+#import "runtime_preflight.h"
 #import "CrossoverUpdater.h"
 
 static NSString *resources;
@@ -56,6 +58,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 @property NSTextField *recordStatus;
 @property NSTimer *recordTimer;
 @property NSDictionary *gameCopy;
+@property NSString *selectionError;
+@property NSString *runtimeError;
 @property NSProgressIndicator *progress;
 @property NSString *bottleRoot;
 @property NSString *game;
@@ -78,6 +82,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     resources = NSBundle.mainBundle.resourcePath;
     support = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/DungeonsCrossOver"];
+    self.runtimeError = MCD2PrepareEmbeddedRuntime(NSBundle.mainBundle.bundlePath, resources);
     self.bottleRoot = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/CrossOver/Bottles"];
     MCD2ConfigureLocalization(resources,[support stringByAppendingPathComponent:@"ui-language"]);
     __weak MCD2App *weakSelf = self;
@@ -93,6 +98,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         || [saved[@"app_version"] isEqualToString:@"0.1.2"]
         || [saved[@"app_version"] isEqualToString:@"0.1.3"]
         || [saved[@"app_version"] isEqualToString:@"0.1.4"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.5"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
@@ -100,7 +106,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         && exists([support stringByAppendingPathComponent:@"python/bin/python"])
         && [saved[@"game"] isKindOfClass:NSString.class]
         && exists([(saved[@"binary"] ?: [saved[@"game"] stringByAppendingPathComponent:@"Dungeons/Binaries/Win64"]) stringByAppendingPathComponent:@"xgameruntime.dll"]);
-    [self showSetup:!ready];
+    [self showSetup:!ready || self.runtimeError != nil];
     [self.window center]; [self.window makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
     self.recordTimer = [NSTimer scheduledTimerWithTimeInterval:15 target:self selector:@selector(refreshRecording:) userInfo:nil repeats:YES];
 }
@@ -361,23 +367,30 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)licenseChanged:(id)sender {
     if (!self.setupMode || self.working) return;
-    self.primary.enabled = (self.selectionPanel || self.license.state == NSControlStateValueOn) && self.bottles.numberOfItems > 0
-        && exists(@"/Applications/CrossOver.app") && self.gameCopy != nil;
-    if (!self.selectionPanel && self.changingBottle && [self.bottles.titleOfSelectedItem isEqual:settings()[@"bottle"]]
+    NSString *blocked = nil;
+    if (self.runtimeError) blocked = self.runtimeError;
+    else if (!exists(@"/Applications/CrossOver.app"))
+        blocked = @"CrossOver was not found at /Applications/CrossOver.app. Move CrossOver there and use the name CrossOver.app, then reopen this app.";
+    else if (!self.bottles.numberOfItems)
+        blocked = L(@"Install the game in a CrossOver bottle, then reopen this app.");
+    else if (!self.gameCopy)
+        blocked = self.selectionError ?: L(@"Game copy not found. Browse to its installed folder or Shipping.exe file.");
+    else if (!self.selectionPanel && self.license.state != NSControlStateValueOn)
+        blocked = @"Accept the Microsoft GDK license to enable Set Up.";
+    else if (!self.selectionPanel && self.changingBottle && [self.bottles.titleOfSelectedItem isEqual:settings()[@"bottle"]]
         && [self.game isEqual:settings()[@"game"]]
         && (!settings()[@"binary"] || [self.gameCopy[@"binary"] isEqual:settings()[@"binary"]])
-        && ((self.stores.indexOfSelectedItem == 1) == [settings()[@"store"] isEqualToString:@"launcher"])) self.primary.enabled = NO;
+        && ((self.stores.indexOfSelectedItem == 1) == [settings()[@"store"] isEqualToString:@"launcher"]))
+        blocked = @"This game copy is already selected. Choose another copy or click Cancel.";
+    self.primary.enabled = blocked == nil;
+    self.status.stringValue = blocked ?: (self.stores.indexOfSelectedItem == 1 ? L(@"Experimental: requires a Launcher-owned copy. Windows Store licensing may prevent it from running in CrossOver.") : L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish."));
 }
 - (void)storeChanged:(id)sender { [self updateGame]; }
 - (NSDictionary *)inspectCopy:(NSString *)path store:(NSString *)store {
-    if (!path.length) return nil;
-    NSTask *task = [NSTask new]; task.executableURL = [NSURL fileURLWithPath:[resources stringByAppendingPathComponent:@"python/bin/python3"]];
-    task.arguments = @[@"-I",@"-B",[resources stringByAppendingPathComponent:@"scripts/game_copy.py"],@"--inspect",path,@"--store",store];
-    NSPipe *pipe = [NSPipe pipe]; task.standardOutput = pipe; task.standardError = NSFileHandle.fileHandleWithNullDevice;
-    if (![task launchAndReturnError:nil]) return nil;
-    NSData *data = [pipe.fileHandleForReading readDataToEndOfFile]; [task waitUntilExit];
-    id copy = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    return task.terminationStatus == 0 && [copy isKindOfClass:NSDictionary.class] ? copy : nil;
+    NSString *error=nil;
+    NSDictionary *copy=MCD2InspectCopy(path,store,&error);
+    self.selectionError=error;
+    return copy;
 }
 - (void)chooseFolder:(id)sender {
     if (self.working) return;
@@ -447,9 +460,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if ([text containsString:@"MCD2_RUNNING_SHARED_STEAM"]) return L(@"Another game is using this Steam bottle.");
     if ([text containsString:@"MCD2_RUNNING_AMBIGUOUS"]) return L(@"Setup couldn’t verify which game is running.");
     if (MCD2KnownText(text)) return L(text);
-    if ([text hasPrefix:@"Unexpected Steam"] || [text hasPrefix:@"Incomplete Steam"]) return L(@"Steam settings could not be read. No settings were changed.");
-    if ([text containsString:@"checksum"] || [text containsString:@"dependency"] || [text containsString:@"CalledProcessError"]) return L(@"Dependency files could not be verified. Check your connection and try setup again.");
-    return L(@"Couldn’t finish setup. Save the logs and try again.");
+    if (text.length > 8192) text = [@"…\n" stringByAppendingString:[text substringFromIndex:text.length-8192]];
+    return text.length ? text : L(@"Couldn’t finish setup. Save the logs and try again.");
 }
 - (void)play:(id)sender { if (![[CrossoverUpdater shared] allowsNewOperation]) return; if (!self.working && !self.setupMode) [self bridge:@"launch"]; }
 - (void)signOut:(id)sender { if (!self.working && !self.setupMode) [self bridge:@"sign-out"]; }
@@ -463,6 +475,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     }];
 }
 - (void)bridge:(NSString *)command {
+    if (self.runtimeError) { self.status.stringValue = self.runtimeError; return; }
     if (![command isEqualToString:@"stop-game"] && ![[CrossoverUpdater shared] allowsNewOperation]) return;
     NSString *bottle = settings()[@"bottle"];
     if (![bottle isKindOfClass:NSString.class]) { [self showSetup:YES]; return; }
@@ -506,13 +519,13 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.bottles.enabled = YES; self.choose.enabled = YES; self.license.enabled = YES;
     self.secondary.title = self.setupMode ? L(@"Cancel") : L(@"Sign Out");
     self.secondary.action = self.setupMode ? @selector(cancel:) : @selector(signOut:); self.secondary.keyEquivalent = self.setupMode ? @"\e" : @"";
+    [self licenseChanged:nil];
     if (self.cancelling) self.status.stringValue = L(@"Launch cancelled.");
     else if (code) self.status.stringValue = [self.operation isEqualToString:@"setup"] ? [self setupError:output] : L(@"Couldn’t finish. Check your connection and try again. You can also choose Repair Setup from the app menu.");
     else if ([self.operation isEqualToString:@"sign-out"]) self.status.stringValue = L(@"Signed out. Your saved Microsoft credential and local session were removed. Play will ask you to sign in again.");
     else if ([self.operation isEqualToString:@"stop-game"]) self.status.stringValue = L(@"The game was stopped.");
     else self.status.stringValue = [settings()[@"store"] isEqualToString:@"launcher"] ? L(@"The selected game copy is opening in CrossOver. Launcher support is experimental.") : L(@"Steam is opening the game. You can close this app now.");
     [self refreshAccount];
-    [self licenseChanged:nil];
     [self resizeCopySheet];
     if ([self.operation isEqualToString:@"setup"] && code >= 20 && code <= 22) [self showRunningGame:code output:output];
 }
@@ -534,7 +547,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 - (void)repair:(id)sender { if (!self.working) { self.changingBottle = NO; [self showSetup:YES]; } }
 - (void)closeWindow:(id)sender { [self.window performClose:sender]; }
 - (void)recordEvent:(NSString *)step outcome:(NSString *)outcome {
-    if (!self.recording) return;
+    if (!self.recording || self.runtimeError) return;
     NSTask *task = [NSTask new]; task.executableURL = [NSURL fileURLWithPath:[resources stringByAppendingPathComponent:@"python/bin/python3"]];
     task.arguments = @[@"-I",@"-B",[resources stringByAppendingPathComponent:@"helper/diagnostics.py"],@"event",@"--step",step,@"--outcome",outcome];
     task.standardOutput = NSFileHandle.fileHandleWithNullDevice; task.standardError = NSFileHandle.fileHandleWithNullDevice;
@@ -566,6 +579,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.recordButton = nil; self.saveLogsButton = nil; self.recordStatus = nil;
 }
 - (void)diagnostics:(NSString *)command output:(NSString *)path completion:(void (^)(NSDictionary *, BOOL))completion {
+    if (self.runtimeError) { self.recordStatus.stringValue = self.runtimeError; completion(@{},NO); return; }
     self.diagnosticsBusy = YES; self.recordButton.enabled = NO; self.saveLogsButton.enabled = NO;
     NSTask *task = [NSTask new]; task.executableURL = [NSURL fileURLWithPath:[resources stringByAppendingPathComponent:@"python/bin/python3"]];
     NSMutableArray *args = [@[@"-I",@"-B",[resources stringByAppendingPathComponent:@"helper/diagnostics.py"],command] mutableCopy];
@@ -593,7 +607,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if (state[@"available"]) self.saveLogsButton.enabled = [state[@"available"] boolValue];
 }
 - (void)refreshRecording:(id)sender {
-    if (self.diagnosticsBusy) return;
+    if (self.diagnosticsBusy || self.runtimeError) return;
     [self diagnostics:@"status" output:nil completion:^(NSDictionary *state, BOOL ok) { if (ok) [self updateRecording:state]; }];
 }
 - (void)toggleRecording:(id)sender {
