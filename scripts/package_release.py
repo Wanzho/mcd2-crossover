@@ -44,7 +44,7 @@ def finder_layout(stage, python):
         store['Applications']['Iloc']=(460,160)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.6');p.add_argument('--gdk-archive',type=Path,required=True)
+    p=argparse.ArgumentParser();p.add_argument('--version',default='0.1.7');p.add_argument('--gdk-archive',type=Path,required=True)
     p.add_argument('--runtime-app',type=Path,help='Reuse the verified, pinned Python runtime from an existing local app without modifying it.')
     p.add_argument('--stage-only',action='store_true',help='Verify the signed app and save its stage without creating a DMG.')
     args=p.parse_args()
@@ -93,7 +93,7 @@ def main():
     frameworks=embed_updater(app,ROOT/'packaging/CrossoverUpdater.swift')
     run(['clang','-arch','arm64','-mmacosx-version-min=13.0','-fobjc-arc','-O2','-framework','Cocoa','-framework','UniformTypeIdentifiers','-L',frameworks,'-lCrossoverUpdates','-Wl,-rpath,@executable_path/../Frameworks',ROOT/'packaging/installer.m','-o',contents/'MacOS/installer'])
     shutil.copy2(ROOT/'assets/AppIcon.icns',resources/'AppIcon.icns')
-    for folder,names in {'scripts':['install.py','startup.py','crossover.py','game_copy.py','game_process.py'],'helper':['bridge.py','diagnostics.py','localization.py','session_watch.py','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
+    for folder,names in {'scripts':['install.py','startup.py','crossover.py','game_copy.py','game_process.py'],'helper':['bridge.py','diagnostics.py','localization.py','session_watch.py','internal_errors.py','error_codes.json','requirements.txt'],'build':['keychain','signin-ui.exe','xgameruntime.dll','XCurl.dll']}.items():
         dest=resources/folder;dest.mkdir()
         for name in names:shutil.copy2(ROOT/folder/name,dest/name)
     shutil.copytree(python,resources/'python',symlinks=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))

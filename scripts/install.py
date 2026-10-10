@@ -14,8 +14,10 @@ from game_process import require_idle, RunningGameError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'helper'))
 import diagnostics
+import internal_errors
+ERROR_STAGE = "validation"
 HOME = Path.home()/'Library/Application Support/DungeonsCrossOver'
-VERSION = '0.1.6'
+VERSION = '0.1.7'
 from crossover import crossover_app
 HASHES = {
     'xgameruntime-native.dll':'815d0c5b0aa5c84eb6104168da551a4922f49f8dd02dbdf3bbc5119beec11b59',
@@ -47,6 +49,8 @@ def write(path,data,executable=False):
     finally:temp.unlink(missing_ok=True)
 
 def main():
+    global ERROR_STAGE
+    ERROR_STAGE = "validation"
     parser=argparse.ArgumentParser()
     parser.add_argument('--bottle',default='Steam')
     parser.add_argument('--game',type=Path)
@@ -79,13 +83,17 @@ def main():
     write(HOME/'crossover-app.json',json.dumps({'path':str(selected_crossover)}).encode())
     runtime=HOME/'runtime';runtime.mkdir(mode=0o700,exist_ok=True)
     if not args.prepare_only:
+        ERROR_STAGE = "visual-cpp"
         ensure_vc(bottle, args.bottle, runtime, game)
         check_running(shared_steam=store=='steam')
-        if store=='steam':stop_steam(bottle, args.bottle)
+        if store=='steam':
+            ERROR_STAGE = 'steam'
+            stop_steam(bottle, args.bottle)
+        ERROR_STAGE = 'files'
         backup=HOME/'backups'/str(time.time_ns());backup.mkdir(parents=True,mode=0o700)
         # Keep the previous helper/settings too, before updating them. Credentials
         # are not exported into the backup or release.
-        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/localization.py','runtime/session_watch.py','runtime/game_process.py','runtime/crossover.py','settings.json','installation.json'):
+        for relative in ('runtime/keychain','runtime/signin-ui.exe','runtime/bridge.py','runtime/diagnostics.py','runtime/internal_errors.py','runtime/error_codes.json','runtime/localization.py','runtime/session_watch.py','runtime/game_process.py','runtime/crossover.py','settings.json','installation.json'):
             previous=HOME/relative
             if previous.is_file():
                 dest=backup/'helper'/relative;dest.parent.mkdir(parents=True,exist_ok=True)
@@ -96,6 +104,7 @@ def main():
     for name in ('Microsoft-GDK-LICENSE.md','curl-LICENSE.txt'):
         notice=ROOT/'licenses'/name
         if notice.exists():write(runtime/name,notice.read_bytes())
+    ERROR_STAGE = "dependencies"
     dependencies={}
     if all((binary/name).exists() and digest((binary/name).read_bytes())==HASHES[name] for name in HASHES):
         dependencies={name:(binary/name).read_bytes() for name in HASHES}
@@ -112,6 +121,7 @@ def main():
             if license_names:write(runtime/'curl-LICENSE.txt',z.read(license_names[0]))
     for name,data in dependencies.items():
         if digest(data)!=HASHES[name]:raise RuntimeError('dependency checksum mismatch: '+name)
+    ERROR_STAGE = 'files'
     for name in ('keychain','signin-ui.exe'):
         write(runtime/name,(ROOT/'build'/name).read_bytes(),True)
     write(runtime/'bridge.py',(ROOT/'helper/bridge.py').read_bytes())
@@ -119,6 +129,8 @@ def main():
     write(runtime/'crossover.py',(ROOT/'scripts/crossover.py').read_bytes())
     write(runtime/'game_process.py',(ROOT/'scripts/game_process.py').read_bytes())
     write(runtime/'diagnostics.py',(ROOT/'helper/diagnostics.py').read_bytes())
+    for name in ('internal_errors.py','error_codes.json'):
+        write(runtime/name,(ROOT/'helper'/name).read_bytes())
     write(runtime/'localization.py',(ROOT/'helper/localization.py').read_bytes())
     for catalog in sorted((ROOT/'localization').glob('*.json')):
         destination=runtime/'localization';destination.mkdir(mode=0o700,exist_ok=True)
@@ -178,9 +190,11 @@ if __name__=='__main__':
         if '--check-only' not in sys.argv[1:]:
             diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
         print(error.marker,file=sys.stderr)
+        internal_errors.emit(2101 + error.exit_code - 20)
         print(str(error),file=sys.stderr)
         raise SystemExit(error.exit_code)
-    except (RuntimeError,ValueError,OSError,subprocess.CalledProcessError) as error:
+    except (RuntimeError,ValueError,OSError,subprocess.CalledProcessError,zipfile.BadZipFile) as error:
         if '--check-only' not in sys.argv[1:]:
             diagnostics.record(HOME,'setup_failed',{'outcome':'failed','app_version':VERSION})
-        raise SystemExit(str(error))
+        internal_errors.emit(internal_errors.setup_code(error,ERROR_STAGE),error)
+        raise SystemExit(1)

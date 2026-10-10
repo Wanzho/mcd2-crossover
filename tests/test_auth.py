@@ -50,6 +50,50 @@ class AuthTests(unittest.TestCase):
         with patch.object(bridge,'keychain',return_value='synthetic-refresh'),patch.object(bridge,'post',return_value=(400,{'error':'invalid_grant'})):
             with self.assertRaises(bridge.AuthError):bridge.renew()
         self.assertEqual((self.home/'session.bin').read_bytes(),packet)
+    def test_only_invalid_grant_requests_interactive_reauthentication(self):
+        for response, expected in [((400, {'error':'invalid_grant'}), 'sign-in required'),
+                                   ((500, {'error':'invalid_grant'}), 'renewal rejected'),
+                                   ((400, {'error':'invalid_client'}), 'renewal rejected')]:
+            with self.subTest(response=response), patch.object(bridge,'keychain',return_value='synthetic-refresh'), patch.object(bridge,'post',return_value=response):
+                with self.assertRaisesRegex(bridge.AuthError, '^'+expected+'$'): bridge.renew()
+    def test_launch_opens_fresh_signin_after_invalid_saved_grant(self):
+        class InteractiveReached(Exception): pass
+        with patch.object(bridge,'refresh_runtime'), patch.object(bridge,'keychain',return_value='synthetic-refresh'), patch.object(bridge,'renew',side_effect=bridge.AuthError('sign-in required')), patch.object(bridge,'interactive',side_effect=InteractiveReached) as signin, patch.object(bridge.subprocess,'run') as external:
+            with self.assertRaises(InteractiveReached): bridge.launch('Test Bottle')
+            signin.assert_called_once_with('Test Bottle')
+            external.assert_not_called()
+    def test_launch_does_not_hide_network_or_service_failures_with_signin(self):
+        for reason in ('network request failed', 'renewal rejected'):
+            with self.subTest(reason=reason), patch.object(bridge,'refresh_runtime'), patch.object(bridge,'keychain',return_value='synthetic-refresh'), patch.object(bridge,'renew',side_effect=bridge.AuthError(reason)), patch.object(bridge,'interactive') as signin, patch.object(bridge.subprocess,'run') as external:
+                with self.assertRaisesRegex(bridge.AuthError, '^'+reason+'$'): bridge.launch('Test Bottle')
+                signin.assert_not_called(); external.assert_not_called()
+    def test_cancel_during_refresh_prevents_fresh_signin(self):
+        def failed_refresh():
+            bridge.cancelled=True
+            raise bridge.AuthError('sign-in required')
+        with patch.object(bridge,'cancelled',False), patch.object(bridge,'refresh_runtime'), patch.object(bridge,'keychain',return_value='synthetic-refresh'), patch.object(bridge,'renew',side_effect=failed_refresh), patch.object(bridge,'interactive') as signin:
+            with self.assertRaisesRegex(bridge.AuthError, '^launch cancelled$'): bridge.launch('Test Bottle')
+            signin.assert_not_called()
+    def test_runtime_update_copies_new_import_dependencies(self):
+        import shutil, subprocess, sys
+        resources=self.home/'Fixture.app/Contents/Resources'
+        root=resources/'helper'; root.mkdir(parents=True)
+        scripts=resources/'scripts'; scripts.mkdir()
+        runtime=self.home/'runtime'; runtime.mkdir()
+        source=Path(__file__).parents[1]
+        names=('bridge.py','internal_errors.py','error_codes.json','diagnostics.py','localization.py','session_watch.py')
+        for name in names: shutil.copyfile(source/'helper'/name,root/name)
+        for name in ('crossover.py','game_process.py'): shutil.copyfile(source/'scripts'/name,scripts/name)
+        (runtime/'bridge.py').write_text('# previous runtime')
+        with patch.object(bridge,'ROOT',root), patch('session_watch.rows',return_value={}), patch.object(bridge.subprocess,'run',return_value=subprocess.CompletedProcess([],0)) as external:
+            bridge.refresh_runtime()
+            external.assert_called_once()
+            bridge.refresh_runtime()
+            external.assert_called_once()
+        for name in names: self.assertEqual((runtime/name).read_bytes(),(root/name).read_bytes())
+        self.assertEqual((runtime/'bridge.py.previous').read_text(),'# previous runtime')
+        # Import the deployed helper in isolation, with no source-tree dependencies.
+        subprocess.run([sys.executable,'-I','-B','-c','import sys;sys.path.insert(0,sys.argv[1]);import bridge',str(runtime)],check=True)
     def test_sign_out_deletes_keychain_and_session(self):
         bridge.atomic(self.home/'session.bin',bridge.make_packet(services()))
         bridge.atomic(self.home/'refresh-0000000000000001.req',b'synthetic')

@@ -5,6 +5,7 @@
 #import "game_copy_native.h"
 #import "crossover_app.h"
 #import "runtime_preflight.h"
+#import "internal_errors.h"
 #import "CrossoverUpdater.h"
 
 static NSString *resources;
@@ -80,6 +81,13 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 @property NSDictionary *gameCopy;
 @property NSString *selectionError;
 @property NSString *runtimeError;
+@property NSDictionary *internalError;
+@property NSString *localErrorDetail;
+@property NSStackView *errorView;
+@property NSButton *detailsButton;
+@property NSScrollView *detailsScroll;
+@property NSTextView *detailsText;
+@property BOOL detailsExpanded;
 @property BOOL setupAttempted;
 @property NSString *crossoverApp;
 @property NSString *crossoverPreferenceError;
@@ -126,6 +134,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         || [saved[@"app_version"] isEqualToString:@"0.1.4"]
         || [saved[@"app_version"] isEqualToString:@"0.1.5"]
         || [saved[@"app_version"] isEqualToString:@"0.1.5.1"]
+        || [saved[@"app_version"] isEqualToString:@"0.1.6"]
         || [saved[@"app_version"] isEqualToString:[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]])
         && exists([support stringByAppendingPathComponent:@"runtime/bridge.py"])
         && exists([support stringByAppendingPathComponent:@"runtime/localization.py"])
@@ -193,9 +202,75 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     NSString *tag = MCD2AccountTag(support);
     self.accountLabel.stringValue = tag.length ? [L(@"Signed in to: ") stringByAppendingString:tag] : L(@"Not signed in");
 }
+- (NSInteger)crossOverErrorCode {
+    if (!self.crossoverApp.length) return 1001;
+    NSDictionary *info=[NSDictionary dictionaryWithContentsOfFile:[self.crossoverApp stringByAppendingPathComponent:@"Contents/Info.plist"]];
+    return [info[@"CFBundleIdentifier"] isEqual:@"com.codeweavers.CrossOver"] ? 1003 : 1002;
+}
+- (void)addErrorDetailsToStack:(NSStackView *)stack {
+    self.errorView=[NSStackView new]; self.errorView.orientation=NSUserInterfaceLayoutOrientationVertical;
+    self.errorView.alignment=NSLayoutAttributeLeading; self.errorView.spacing=8;
+    self.detailsButton=[NSButton buttonWithTitle:@"See details…" target:self action:@selector(toggleErrorDetails:)];
+    self.detailsButton.bezelStyle=NSBezelStyleDisclosure; self.detailsButton.buttonType=NSButtonTypeOnOff;
+    [self.errorView addArrangedSubview:self.detailsButton];
+    self.detailsScroll=[NSScrollView new]; self.detailsScroll.hasVerticalScroller=YES;
+    self.detailsScroll.borderType=NSBezelBorder;
+    self.detailsText=[[NSTextView alloc] initWithFrame:NSMakeRect(0,0,600,220)]; self.detailsText.editable=NO; self.detailsText.selectable=YES;
+    self.detailsText.font=[NSFont systemFontOfSize:12]; self.detailsText.textColor=NSColor.labelColor;
+    self.detailsText.textContainerInset=NSMakeSize(8,8); self.detailsText.verticallyResizable=YES; self.detailsText.horizontallyResizable=NO;
+    self.detailsText.minSize=NSMakeSize(0,220); self.detailsText.maxSize=NSMakeSize(CGFLOAT_MAX,CGFLOAT_MAX);
+    self.detailsText.autoresizingMask=NSViewWidthSizable; self.detailsText.textContainer.widthTracksTextView=YES;
+    self.detailsScroll.documentView=self.detailsText;
+    [self.errorView addArrangedSubview:self.detailsScroll];
+    [self.detailsScroll.widthAnchor constraintEqualToAnchor:self.errorView.widthAnchor].active=YES;
+    [self.detailsScroll.heightAnchor constraintEqualToConstant:220].active=YES;
+    [self.errorView addArrangedSubview:[NSButton buttonWithTitle:@"Copy Details" target:self action:@selector(copyErrorDetails:)]];
+    [stack addArrangedSubview:self.errorView];
+    [self renderError];
+}
+- (void)renderError {
+    self.errorView.hidden=self.internalError==nil;
+    self.detailsScroll.hidden=!self.detailsExpanded;
+    self.errorView.arrangedSubviews.lastObject.hidden=!self.detailsExpanded;
+    self.detailsButton.state=self.detailsExpanded ? NSControlStateValueOn : NSControlStateValueOff;
+    self.detailsButton.title=self.detailsExpanded ? @"Hide details" : @"See details…";
+    NSString *text=MCD2ErrorText(self.internalError);
+    // Specific validator output stays local; exported diagnostics use only catalog text and numbers.
+    if (self.localErrorDetail.length) text=[text stringByAppendingFormat:@"\n\nLocal check result: %@",self.localErrorDetail];
+    self.detailsText.string=text;
+    [self resizeCopySheet];
+}
+- (void)toggleErrorDetails:(id)sender { self.detailsExpanded=!self.detailsExpanded; [self renderError]; }
+- (void)copyErrorDetails:(id)sender {
+    [NSPasteboard.generalPasteboard clearContents];
+    [NSPasteboard.generalPasteboard setString:MCD2ErrorText(self.internalError) forType:NSPasteboardTypeString];
+}
+- (void)clearError { self.internalError=nil; self.localErrorDetail=nil; self.detailsExpanded=NO; [self renderError]; }
+- (void)reportError:(NSInteger)code exit:(NSNumber *)exitCode system:(NSNumber *)systemCode local:(NSString *)local {
+    NSDictionary *record=MCD2ErrorRecord(code,exitCode,systemCode);
+    if (!record) return;
+    BOOL changed=![record isEqual:self.internalError];
+    self.internalError=record; self.localErrorDetail=local;
+    if (changed) self.detailsExpanded=NO;
+    self.status.stringValue=[NSString stringWithFormat:@"Internal Error: %04ld — %@",code,MCD2ErrorCatalog()[@(code)][@"observed"]];
+    self.status.hidden=NO;
+    // A small last-error record, without paths, account data or raw process output.
+    if (changed && support.length && ![[NSFileManager.defaultManager attributesOfItemAtPath:support error:nil][NSFileType] isEqual:NSFileTypeSymbolicLink]) {
+        if ([NSFileManager.defaultManager createDirectoryAtPath:support withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil]) {
+            NSData *data=[NSJSONSerialization dataWithJSONObject:record options:0 error:nil];
+            NSString *path=[support stringByAppendingPathComponent:@"internal-error.json"];
+            if (![[NSFileManager.defaultManager attributesOfItemAtPath:path error:nil][NSFileType] isEqual:NSFileTypeSymbolicLink]) {
+                [data writeToFile:path options:NSDataWritingAtomic error:nil];
+                [NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:path error:nil];
+            }
+        }
+    }
+    [self renderError];
+}
 - (void)showSetup:(BOOL)setup {
     if (self.selectionPanel) [self dismissCopySheet];
     if (!setup) self.changingBottle = NO;
+    self.internalError = nil; self.localErrorDetail = nil; self.detailsExpanded = NO;
     self.setupMode = setup;
     self.setupAttempted = NO;
     self.accountLabel = nil;
@@ -245,6 +320,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     }
     self.status = label(setup ? L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish.") : L(@"To change Microsoft accounts, quit the game and choose Sign Out."),13,NSFontWeightRegular);
     self.status.accessibilityLabel = L(@"Status"); [self.stack addArrangedSubview:self.status];
+    [self addErrorDetailsToStack:self.stack];
     self.progress = [NSProgressIndicator new]; self.progress.style = NSProgressIndicatorStyleBar; self.progress.indeterminate = YES; self.progress.hidden = YES; [self.stack addArrangedSubview:self.progress];
     self.secondary = [NSButton buttonWithTitle:setup ? L(@"Cancel") : L(@"Sign Out") target:self action:setup ? @selector(cancel:) : @selector(signOut:)];
     self.primary = [MCD2SetupButton buttonWithTitle:setup ? L(@"Set Up") : L(@"Play") target:self action:setup ? @selector(install:) : @selector(play:)]; self.primary.keyEquivalent = @"\r";
@@ -348,10 +424,11 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 - (void)showCopySheet {
     if (self.working || self.setupMode || self.window.attachedSheet) return;
     NSMutableDictionary *state = [NSMutableDictionary new];
-    for (NSString *key in @[@"crossoverLabel",@"chooseCrossoverButton",@"bottles",@"stores",@"gameLabel",@"status",@"choose",@"license",@"primary",@"secondary",@"closeButton",@"changeBottleButton",@"progress",@"game",@"gameSelection",@"gameCopy",@"setupMode",@"changingBottle"]) {
+    for (NSString *key in @[@"internalError",@"localErrorDetail",@"errorView",@"detailsButton",@"detailsScroll",@"detailsText",@"detailsExpanded",@"crossoverLabel",@"chooseCrossoverButton",@"bottles",@"stores",@"gameLabel",@"status",@"choose",@"license",@"primary",@"secondary",@"closeButton",@"changeBottleButton",@"progress",@"game",@"gameSelection",@"gameCopy",@"setupMode",@"changingBottle"]) {
         state[key] = [self valueForKey:key] ?: NSNull.null;
     }
     self.homeUIState = state;
+    self.internalError = nil; self.localErrorDetail = nil; self.detailsExpanded = NO;
     self.setupMode = YES; self.changingBottle = YES; self.setupAttempted = NO;
     self.closeButton = nil; self.changeBottleButton = nil;
     NSPanel *panel = [[NSPanel alloc] initWithContentRect:NSMakeRect(0,0,650,340) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
@@ -370,6 +447,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.license = nil;
     self.status = label(@"",13,NSFontWeightRegular); self.status.accessibilityLabel = L(@"Status"); self.status.hidden = YES;
     [stack addArrangedSubview:self.status];
+    [self addErrorDetailsToStack:stack];
     self.progress = [NSProgressIndicator new]; self.progress.style = NSProgressIndicatorStyleBar; self.progress.indeterminate = YES; self.progress.hidden = YES;
     [stack addArrangedSubview:self.progress];
     self.secondary = [NSButton buttonWithTitle:L(@"Cancel") target:self action:@selector(cancel:)]; self.secondary.keyEquivalent = @"\e";
@@ -442,7 +520,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)licenseChanged:(id)sender {
     if (!self.setupMode || self.working) return;
-    NSString *blocked = nil;
+    NSString *blocked = nil; NSInteger errorCode = 0;
     if (self.runtimeError) blocked = self.runtimeError;
     else if (self.crossoverPreferenceError) blocked = self.crossoverPreferenceError;
     else if (MCD2CrossOverError(self.crossoverApp)) blocked = MCD2CrossOverError(self.crossoverApp);
@@ -457,8 +535,19 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         && (!settings()[@"binary"] || [self.gameCopy[@"binary"] isEqual:settings()[@"binary"]])
         && ((self.stores.indexOfSelectedItem == 1) == [settings()[@"store"] isEqualToString:@"launcher"]))
         blocked = @"This game copy is already selected. Choose another copy or click Cancel.";
+    if (blocked) {
+        if (self.runtimeError) errorCode=1101;
+        else if (self.crossoverPreferenceError) errorCode=1004;
+        else if (MCD2CrossOverError(self.crossoverApp)) errorCode=[self crossOverErrorCode];
+        else if (!self.bottles.numberOfItems) errorCode=1201;
+        else if (!self.gameCopy) errorCode=1202;
+        else if (!self.selectionPanel && self.license.state != NSControlStateValueOn) errorCode=1203;
+        else errorCode=1204;
+    }
     self.primary.enabled = blocked == nil;
     self.status.stringValue = (self.setupAttempted ? blocked : nil) ?: (self.stores.indexOfSelectedItem == 1 ? L(@"Experimental: requires a Launcher-owned copy. Windows Store licensing may prevent it from running in CrossOver.") : L(@"If Visual C++ is missing, Microsoft’s installer will open for you to finish."));
+    if (self.setupAttempted && blocked) [self reportError:errorCode exit:nil system:nil local:blocked];
+    else [self clearError];
     if (self.selectionPanel && self.setupAttempted && blocked) self.status.hidden = NO;
     [self resizeCopySheet];
 }
@@ -556,8 +645,8 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
 }
 - (void)bridge:(NSString *)command {
     NSString *crossoverError = self.crossoverPreferenceError ?: MCD2CrossOverError(self.crossoverApp);
-    if (crossoverError) { self.status.stringValue = crossoverError; return; }
-    if (self.runtimeError) { self.status.stringValue = self.runtimeError; return; }
+    if (crossoverError) { [self reportError:self.crossoverPreferenceError ? 1004 : [self crossOverErrorCode] exit:nil system:nil local:crossoverError]; return; }
+    if (self.runtimeError) { [self reportError:1101 exit:nil system:nil local:self.runtimeError]; return; }
     if (![command isEqualToString:@"stop-game"] && ![[CrossoverUpdater shared] allowsNewOperation]) return;
     NSString *bottle = settings()[@"bottle"];
     if (![bottle isKindOfClass:NSString.class]) { [self showSetup:YES]; return; }
@@ -565,6 +654,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
         arguments:@[@"-I",@"-B",[resources stringByAppendingPathComponent:@"helper/bridge.py"],command,@"--bottle",bottle]];
 }
 - (void)run:(NSString *)operation executable:(NSString *)executable arguments:(NSArray *)arguments {
+    [self clearError];
     self.working = YES; self.cancelling = NO; self.operation = operation;
     self.chooseCrossoverButton.enabled = NO;
     self.primary.enabled = NO; self.bottles.enabled = NO; self.choose.enabled = NO; self.license.enabled = NO;
@@ -586,7 +676,10 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     task.executableURL = [NSURL fileURLWithPath:executable]; task.arguments = arguments;
     NSPipe *pipe = [NSPipe pipe]; task.standardOutput = pipe; task.standardError = pipe;
     NSError *error;
-    if (![task launchAndReturnError:&error]) { [self finished:1 output:L(@"Couldn’t start. Choose Repair Setup from the MCD2 Crossover menu, or download the app again.")]; return; }
+    if (![task launchAndReturnError:&error]) {
+        [self finished:1 output:@""];
+        [self reportError:2001 exit:nil system:@(error.code) local:nil]; return;
+    }
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         NSData *data = [pipe.fileHandleForReading readDataToEndOfFile]; [task waitUntilExit];
         NSString *output = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
@@ -608,8 +701,13 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     self.secondary.title = self.setupMode ? L(@"Cancel") : L(@"Sign Out");
     self.secondary.action = self.setupMode ? @selector(cancel:) : @selector(signOut:); self.secondary.keyEquivalent = self.setupMode ? @"\e" : @"";
     [self licenseChanged:nil];
-    if (self.cancelling) self.status.stringValue = L(@"Launch cancelled.");
-    else if (code) self.status.stringValue = [self.operation isEqualToString:@"setup"] ? [self setupError:output] : L(@"Couldn’t finish. Check your connection and try again. You can also choose Repair Setup from the app menu.");
+    if (self.cancelling) { [self clearError]; self.status.stringValue = L(@"Launch cancelled."); }
+    else if (code) {
+        NSDictionary *detail=MCD2ParseError(output);
+        NSInteger errorCode=[detail[@"code"] integerValue];
+        if (!errorCode) errorCode=[self.operation isEqual:@"setup"] ? ((code>=20 && code<=22) ? 2101+code-20 : 2299) : [self.operation isEqual:@"sign-out"] ? 4001 : [self.operation isEqual:@"stop-game"] ? 4002 : 3199;
+        [self reportError:errorCode exit:@(code) system:detail[@"system_code"] local:nil];
+    }
     else if ([self.operation isEqualToString:@"sign-out"]) self.status.stringValue = L(@"Signed out. Your saved Microsoft credential and local session were removed. Play will ask you to sign in again.");
     else if ([self.operation isEqualToString:@"stop-game"]) self.status.stringValue = L(@"The game was stopped.");
     else self.status.stringValue = [settings()[@"store"] isEqualToString:@"launcher"] ? L(@"The selected game copy is opening in CrossOver. Launcher support is experimental.") : L(@"Steam is opening the game. You can close this app now.");
@@ -650,6 +748,10 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     stack.translatesAutoresizingMaskIntoConstraints = NO; [panel.contentView addSubview:stack];
     [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:panel.contentView.leadingAnchor constant:24], [stack.trailingAnchor constraintEqualToAnchor:panel.contentView.trailingAnchor constant:-24], [stack.topAnchor constraintEqualToAnchor:panel.contentView.topAnchor constant:20]]];
     [stack addArrangedSubview:label(L(@"Troubleshooting"),17,NSFontWeightSemibold)];
+    if (self.internalError) {
+        [stack addArrangedSubview:label([NSString stringWithFormat:@"Internal Error: %04ld",[self.internalError[@"code"] integerValue]],13,NSFontWeightMedium)];
+        [stack addArrangedSubview:[NSButton buttonWithTitle:@"Copy Details" target:self action:@selector(copyErrorDetails:)]];
+    }
     self.recordStatus = label(@"",13,NSFontWeightRegular); self.recordStatus.accessibilityLabel = L(@"Log recording status"); [stack addArrangedSubview:self.recordStatus];
     [stack addArrangedSubview:label(L(@"Setup and sign-in issues can be recorded here with the game closed."),13,NSFontWeightRegular)];
     self.recordButton = [NSButton buttonWithTitle:L(@"Start Recording") target:self action:@selector(toggleRecording:)];
@@ -692,7 +794,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     [self refreshAccount];
     if (!self.logsSaved || self.recording) self.recordStatus.stringValue = self.recording ? L(@"Recording. Reproduce the problem, then click Save Logs.") : L(@"For in-game problems, click on Start Recording and reproduce the problem in-game.");
     self.troubleshootingButton.toolTip = self.recording ? L(@"Recording troubleshooting logs — click to stop or save") : L(@"Record a problem and save troubleshooting logs");
-    if (state[@"available"]) self.saveLogsButton.enabled = [state[@"available"] boolValue];
+    if (state[@"available"]) self.saveLogsButton.enabled = [state[@"available"] boolValue] || self.internalError != nil;
 }
 - (void)refreshRecording:(id)sender {
     if (self.diagnosticsBusy || self.runtimeError) return;
@@ -702,7 +804,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     if (self.diagnosticsBusy) return;
     [self diagnostics:self.recording ? @"stop" : @"start" output:nil completion:^(NSDictionary *state, BOOL ok) {
         if (ok) { self.logsSaved = NO; [self updateRecording:state]; }
-        else self.recordStatus.stringValue = L(@"Couldn’t change recording. Check that your account can write to Application Support.");
+        else { [self reportError:5002 exit:nil system:nil local:nil]; self.recordStatus.stringValue = @"Internal Error: 5002 — Could not change recording. See details in the launcher."; }
     }];
 }
 - (void)saveLogs:(id)sender {
@@ -711,10 +813,20 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
     panel.message = L(@"Save logs to attach to a GitHub issue. Recording stops when saved.");
     NSDateFormatter *format = [NSDateFormatter new]; format.dateFormat = @"yyyy-MM-dd-HHmm";
     panel.nameFieldStringValue = [NSString stringWithFormat:@"MCD2-Crossover-Logs-%@.zip",[format stringFromDate:NSDate.date]];
-    panel.allowedContentTypes = @[UTTypeZIP]; panel.canCreateDirectories = YES;
+    BOOL nativeOnly=self.runtimeError != nil;
+    if (nativeOnly) panel.nameFieldStringValue=@"MCD2-Crossover-Error.txt";
+    panel.allowedContentTypes = nativeOnly ? @[UTTypePlainText] : @[UTTypeZIP]; panel.canCreateDirectories = YES;
     [panel beginSheetModalForWindow:self.diagnosticPanel ?: self.window completionHandler:^(NSModalResponse response) {
         if (response != NSModalResponseOK) return;
         NSString *destination = panel.URL.path;
+        if (nativeOnly) {
+            if (!self.internalError) [self reportError:1101 exit:nil system:nil local:self.runtimeError];
+            NSError *error=nil;
+            BOOL ok=[MCD2ErrorText(self.internalError) writeToFile:destination atomically:YES encoding:NSUTF8StringEncoding error:&error];
+            if (!ok) [self reportError:5001 exit:nil system:@(error.code) local:nil];
+            self.recordStatus.stringValue=ok ? @"Error details saved." : @"Internal Error: 5001 — Could not save details.";
+            return;
+        }
         [self diagnostics:@"export" output:destination completion:^(NSDictionary *state, BOOL ok) {
             [self updateRecording:state];
             if (ok) {
@@ -723,7 +835,7 @@ static BOOL exists(NSString *path) { return path && [NSFileManager.defaultManage
                 NSMutableAttributedString *message = [[NSMutableAttributedString alloc] initWithString:text attributes:@{NSFontAttributeName:[NSFont systemFontOfSize:13],NSForegroundColorAttributeName:NSColor.labelColor}];
                 [message addAttribute:NSLinkAttributeName value:[NSURL URLWithString:@"https://github.com/Wanzho/mcd2-crossover/issues/new/choose"] range:NSMakeRange(0,text.length)];
                 self.recordStatus.allowsEditingTextAttributes = YES; self.recordStatus.selectable = YES; self.recordStatus.attributedStringValue = message;
-            } else self.recordStatus.stringValue = L(@"Couldn’t save logs. Choose another location and try again.");
+            } else { [self reportError:5001 exit:nil system:nil local:nil]; self.recordStatus.stringValue = @"Internal Error: 5001 — Could not save logs. Copy Details is still available."; }
             if (ok) [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:destination]]];
         }];
     }];

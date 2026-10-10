@@ -14,6 +14,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent / 'scripts'))
 from crossover import wine
 import diagnostics
+import internal_errors
 import localization
 
 HOME = Path.home() / 'Library/Application Support/DungeonsCrossOver'
@@ -91,14 +92,15 @@ def refresh_runtime():
     pending = HOME/'runtime-restart-pending'
     with open(HOME/'runtime-update.lock','a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        for name in ('bridge.py','diagnostics.py','localization.py','session_watch.py'):
+        for name in ('error_codes.json','internal_errors.py','diagnostics.py','localization.py','session_watch.py','bridge.py'):
             source = ROOT/name; dest = runtime/name
             data = source.read_bytes()
             if not dest.exists() or dest.read_bytes() != data:
                 if dest.exists(): atomic(runtime/(name+'.previous'),dest.read_bytes())
                 atomic(dest,data); changed = True
-        source = ROOT.parent/'scripts/game_process.py'
-        if source.exists(): atomic(runtime/'game_process.py',source.read_bytes())
+        for name in ('crossover.py','game_process.py'):
+            source = ROOT.parent/'scripts'/name
+            if source.exists(): atomic(runtime/name,source.read_bytes())
         if changed: atomic(pending,b'1')
     if pending.exists():
         from session_watch import rows, SHIPPING
@@ -234,6 +236,8 @@ def renew():
         if not refresh: raise AuthError('sign-in required')
         status,doc = post('microsoft-refresh','https://login.live.com/oauth20_token.srf',
                           form={'client_id':CLIENT,'scope':SCOPE,'grant_type':'refresh_token','refresh_token':refresh})
+        if status == 400 and doc.get('error') == 'invalid_grant':
+            raise AuthError('sign-in required')
         if status != 200 or not doc.get('access_token'): raise AuthError('renewal rejected')
         previous = session_meta()
         packet = make_packet(services_for(doc['access_token']), previous['xuid'] if previous else None)
@@ -359,7 +363,12 @@ def launch(bottle):
         status.unlink(missing_ok=True)
         meta = session_meta()
         if not meta or meta['expires'] < time.time()+300:
-            if keychain('get') and not (HOME/'signed-out').exists(): renew()
+            if keychain('get') and not (HOME/'signed-out').exists():
+                try: renew()
+                except AuthError as error:
+                    if error.args != ('sign-in required',): raise
+                    if cancelled: raise AuthError('launch cancelled')
+                    interactive(bottle)
             else: interactive(bottle)
         # launchd owns renewal independently of the launcher and Codex.
         agent = Path.home()/'Library/LaunchAgents/org.dungeons-crossover.auth.plist'
@@ -454,8 +463,9 @@ def main():
 
 if __name__ == '__main__':
     try: main()
-    except (AuthError,OSError,ValueError,KeyError) as error:
+    except (AuthError,OSError,ValueError,KeyError,RuntimeError,subprocess.CalledProcessError) as error:
         if sys.argv[1:2]==['launch']:diagnostics.record(HOME,'launch_failed',{'outcome':'failed'})
+        internal_errors.emit(internal_errors.auth_code(error, sys.argv[1] if len(sys.argv)>1 else ''), error)
         # Do not stringify exceptions: urllib/server/OS errors may include secrets.
         print('Sign-in helper could not complete the operation. No authentication details were logged.',file=sys.stderr)
         sys.exit(1)

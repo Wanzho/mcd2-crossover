@@ -6,13 +6,13 @@ Repairs Steam startup, runtime dependencies, networking and Microsoft/Xbox sign-
 
 <img width="588" height="504" alt="Screenshot 2026-10-01 at 01 04 03" src="https://github.com/user-attachments/assets/46ba1909-937e-4134-93e9-4b90c623c628" />
 
-**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.6)**
+**[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.7)**
 
 ## Install
 
 Install CrossOver, Windows Steam and Minecraft Dungeons II first. Open Steam and sign in at least once.
 
-1. Download **MCD2-Crossover-0.1.6-arm64.dmg** under **Assets** on the download page.
+1. Download **MCD2-Crossover-0.1.7-arm64.dmg** under **Assets** on the download page.
 2. Open it and drag **MCD2 Crossover** into **Applications**.
 3. Quit the game, then open **MCD2 Crossover** from Applications.
 If macOS blocks it, approve it in **System Settings → Privacy & Security**. 
@@ -40,6 +40,15 @@ Your Microsoft sign-in stays saved. The previous bottle keeps its repair; the ap
 ## Sign out or switch accounts
 
 Quit the game, open **MCD2 Crossover**, and click **Sign Out**. This removes the saved Microsoft credential and local session. Click **Play** to sign in again with the account you want.
+
+## What's new in 0.1.7
+
+- When Microsoft rejects a saved sign-in and requires authentication again, Play now opens a fresh sign-in window. Network and service failures remain visible as errors.
+- Failures show an **Internal Error** code with **See details…** and **Copy Details**, including what was checked and what to try next. Setup errors only appear after you attempt to click **Set Up**.
+- **Save Logs…** can export the last error even without a recording.
+- Updating the helper also installs its diagnostic dependencies.
+
+Choose **Check for Updates…** in the app menu to update. Verified with 72 automated Python tests and 26 native UI assertions; this does not establish the cause of every reported sign-in failure.
 
 ## What's new in 0.1.6
 
@@ -106,3 +115,11 @@ Unofficial project. Not affiliated with Mojang, Microsoft or CodeWeavers.
 ## References
 
 Coded with Codex Astra 6 and Sol 6.1, reviewed with Claude Opus 5.5.
+
+## Internal error codes
+
+When an operation fails, MCD2 Crossover shows **Internal Error: 1234** and **See details…**. Expand it to see the check, expected result, observed failure, and suggested next step. Process exit statuses and system error numbers are included when available. These are launcher support codes, not Minecraft or Xbox server error codes.
+
+If **Set Up** is unavailable, click it to see why. Setup validation errors stay hidden until that attempt. **Copy Details** copies a support-safe report; **Troubleshooting… → Save Logs…** includes the last internal error even without starting a recording. If the bundled runtime is unavailable, Save Logs offers a text error report instead. Local validator messages can include the selected path on screen; exported error reports contain catalog text and numeric results, not account data or raw sign-in responses.
+
+See the [complete error-code catalog](docs/error-codes.json). Unknown failures retain a general code rather than guessing a cause. Cancelling launch yourself is shown as cancellation, not an internal error.

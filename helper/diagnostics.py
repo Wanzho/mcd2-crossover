@@ -241,6 +241,22 @@ def stop(home=HOME, now=None):
     return status(home, now=now)
 
 
+def _internal_error_report(home):
+    if Path(home).is_symlink():
+        return None
+    catalog_path = Path(__file__).with_name("error_codes.json")
+    catalog = {row["code"]: row for row in json.loads(catalog_path.read_text())} if catalog_path.is_file() else {}
+    error = _read_json(Path(home) / 'internal-error.json')
+    code = error.get('code')
+    if type(code) is not int or code not in catalog:
+        return None
+    report = dict(catalog[code])
+    for key in ('exit_status', 'system_code'):
+        if type(error.get(key)) is int:
+            report[key] = error[key]
+    return report
+
+
 def status(home=HOME, now=None):
     home = Path(home)
     now = time.time() if now is None else now
@@ -254,7 +270,7 @@ def status(home=HOME, now=None):
             if _regular(path):
                 files.append({'name': name, 'bytes': min(path.stat().st_size, MAX_LOG_BYTES),
                               'capped': path.stat().st_size > MAX_LOG_BYTES})
-    result = {'ok': True, 'active': active, 'available': bool(files),
+    result = {'ok': True, 'active': active, 'available': bool(files) or _internal_error_report(home) is not None,
               'seconds_remaining': max(0, int(state.get('expires', 0) - now)) if active else 0,
               'expires': state.get('expires'), 'started': state.get('started'), 'logfiles': files}
     if state and _integer(stopped, state['started'], state['expires']):
@@ -481,7 +497,11 @@ def export(home, output, now=None):
         report['input_capped'] = capped
         reports[name] = report
         entries['logs/' + name] = safe
-    if not reports:
+    # Error reports remain exportable even if no optional recording was started.
+    error_report = _internal_error_report(home)
+    if error_report:
+        entries['internal-error.json'] = (json.dumps(error_report,indent=2)+'\n').encode()
+    if not reports and 'internal-error.json' not in entries:
         raise NoRecordingError('no recording available')
     settings = _read_json(home / 'settings.json')
     safe_settings = _app_fields({'store': settings.get('store'), 'app_version': settings.get('app_version')})
