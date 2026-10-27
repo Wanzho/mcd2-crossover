@@ -8,9 +8,9 @@ Repairs Steam startup, runtime dependencies, networking and Microsoft/Xbox sign-
 
 **[Download MCD2 Crossover →](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.1.8.1)**
 
-## Beta 2
+## Beta 3
 
-[Try 0.2.0 Beta 2](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.2.0-beta.2) if you want to help investigate sign-in and **Playing Offline** problems. It keeps Beta 1’s Wine crash fix and adds more useful request diagnostics. Check for Updates does not offer beta releases.
+[Try 0.2.0 Beta 3](https://github.com/Wanzho/mcd2-crossover/releases/tag/v0.2.0-beta.3) if you want to help investigate sign-in and **Playing Offline** problems. It includes the earlier beta changes and preserves the Wine wait-queue patch status in saved logs. Check for Updates does not offer beta releases.
 
 After replacing the app, quit the game and run **Set Up** once for the same bottle to install the new adapters. Your saved sign-in stays in place. To send a report, choose **Start Recording**, reproduce the problem, then **Save Logs**.
 

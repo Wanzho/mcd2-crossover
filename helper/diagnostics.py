@@ -74,6 +74,9 @@ USER_APIS = {
 }
 HTTP_CONSTANTS = {
     'diagnostic loaded', 'curl_global_init_mem called', 'curl_easy_init called',
+    'wait-queue fix applied', 'wait-queue fix already present',
+    'wait-queue fix not applicable to this Wine build',
+    'wait-queue fix could not be applied',
     'Incompatible SSL_CTX customization refused: CURLE_NOT_BUILT_IN',
     'Unsupported TLS verification reduction refused',
 }
